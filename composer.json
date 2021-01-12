@@ -1,6 +1,6 @@
 {
-    "name": "agp/modelo",
-    "description": "Pacote modelo de Package",
+    "name": "agp/package-login",
+    "description": "Pacote de funcionalidades de login dos aplicativos do sistema modular",
     "license": "MIT",
     "type": "library",
     "authors": [
@@ -15,13 +15,13 @@
     "minimum-stability": "dev",
     "autoload": {
         "psr-0": {
-            "Agp\\Modelo": "src/"
+            "Agp\\Login": "src/"
         }
     },
     "extra": {
         "laravel": {
             "providers": [
-                "Agp\\Modelo\\AgpModeloServiceProvider"
+                "Agp\\Login\\AgpLoginServiceProvider"
             ]
         }
     }
