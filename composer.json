@@ -1,0 +1,28 @@
+{
+    "name": "agp/modelo",
+    "description": "Pacote modelo de Package",
+    "license": "MIT",
+    "type": "library",
+    "authors": [
+        {
+            "name": "richard",
+            "email": "richardpcardoso@gmail.com"
+        }
+    ],
+    "require": {
+        "php": ">=7.3"
+    },
+    "minimum-stability": "dev",
+    "autoload": {
+        "psr-0": {
+            "Agp\\Modelo": "src/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Agp\\Modelo\\AgpModeloServiceProvider"
+            ]
+        }
+    }
+}
