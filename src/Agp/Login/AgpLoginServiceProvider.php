@@ -9,6 +9,9 @@ class AgpLoginServiceProvider extends ServiceProvider
     public function boot()
     {
         $this->loadRoutesFrom(__DIR__ . '/Routes/web.php');
+        $this->publishes([
+            __DIR__ . '/config/login.php' => config_path('login.php'),
+        ], 'config');
     }
 
     public function register()
