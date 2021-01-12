@@ -1,5 +1,5 @@
 {
-    "name": "agp/package-login",
+    "name": "agp/login",
     "description": "Pacote de funcionalidades de login dos aplicativos do sistema modular",
     "license": "MIT",
     "type": "library",
@@ -10,7 +10,10 @@
         }
     ],
     "require": {
-        "php": ">=7.3"
+        "php": ">=7.3",
+        "laravel/framework": "^7.0",
+        "tymon/jwt-auth": "^1.0",
+        "geekcom/validator-docs": "^3.4"
     },
     "minimum-stability": "dev",
     "autoload": {
