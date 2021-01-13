@@ -1,0 +1,60 @@
+<form class="form" id="form-login" novalidate="novalidate" method="post" action="{{ route('web.login.find') }}">
+    @csrf
+    @if(count($contas) > 0)
+        <div class="card bg-primary-o-30 card-custom card-stretch gutter-b">
+            <div class="card-body pt-2">
+                @foreach ($contas as $conta)
+                    <div class="d-flex flex-wrap align-items-center mt-5">
+                        <div class="symbol symbol-60 symbol-2by3 flex-shrink-0 mr-4">
+                            <img class="rounded-circle" src="{{ Helper::getAvatarUrl($conta->email, 60) }}" alt="">
+                        </div>
+                        <div class="d-flex flex-column flex-grow-1 my-lg-0 my-2 mr-2">
+                            <a href="#"
+                               class="text-dark-75 font-weight-bold text-hover-primary font-size-lg mb-1">{{ $conta->nome }}</a>
+                            <span class="text-muted font-weight-bold">{{ $conta->email }}</span>
+                        </div>
+                        <div class="d-flex align-items-center mt-lg-0">
+                            <a class="btn btn-icon btn-light btn-sm"
+                               href="{{ route('web.login.forget',['email' => $conta->email]) }}">
+                                {{ Metronic::getSVG('media/svg/icons/Home/Trash.svg', 'svg-icon-danger') }}
+                            </a>
+                            <a class="btn btn-icon btn-light btn-sm ml-1" href="javascript:;"
+                               onclick="$('#email_cpf').val('{{$conta->email}}');$('#form-login').submit();">
+                                {{ Metronic::getSVG('media/svg/icons/Navigation/Right-2.svg', 'svg-icon-success') }}
+                            </a>
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+        </div>
+    @endif
+    @if(isset($errors) && $errors->any())
+        <div
+            class="alert alert-custom @if(Route::current()->getName() == 'login') alert-outline-2x alert-outline-danger @else alert-light-danger @endif fade show mb-5">
+            <div class="alert-icon">
+                <i class="flaticon-warning"></i>
+            </div>
+            <ul class="alert-text mb-0">
+                @foreach ($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+            <div class="alert-close">
+                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                    <span aria-hidden="true">
+                        <i class="ki ki-close"></i>
+                    </span>
+                </button>
+            </div>
+        </div>
+    @endif
+    <input type="hidden" id="empresa" name="empresa" value="">
+    <div class="form-group">
+        <input class="form-control form-control-solid h-auto py-5 px-6 cpfdebug"
+               placeholder="E-mail ou CPF" id="email_cpf" name="email_cpf"/>
+    </div>
+    <div class="form-group d-flex flex-wrap justify-content-between align-items-center">
+        <a href="{{ route('web.login.create') }}" class="text-dark-50 text-hover-primary my-3 mr-2">Criar conta</a>
+        <button type="submit" class="btn btn-primary font-weight-bold px-9 py-4 my-3">Entrar</button>
+    </div>
+</form>

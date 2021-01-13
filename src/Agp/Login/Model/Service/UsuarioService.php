@@ -4,16 +4,13 @@
 namespace Agp\Login\Model\Service;
 
 
-use Agp\Login\Utils\LoginResponseUtils;
-use App\Mail\LoginFailMail;
-use App\Mail\LoginMail;
-use App\Model\Entity\Aplicativo;
-use App\Utils\ApiCodeUtils;
-use Facades\App\Model\Repository\UsuarioRepository;
-use GuzzleHttp\Client;
-use Illuminate\Support\Facades\Auth;
+use Agp\BaseUtils\Helper\Utils;
+use Agp\Log\Jobs\LogJob;
+use Agp\Log\Log;
+use Agp\Login\Model\Repository\UsuarioRepository;
 use Illuminate\Support\Facades\Cookie;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Validation\ValidationException;
 use stdClass;
 use Tymon\JWTAuth\Exceptions\JWTException;
 use Tymon\JWTAuth\Facades\JWTAuth;
@@ -34,149 +31,290 @@ use Tymon\JWTAuth\Facades\JWTAuth;
 class UsuarioService
 {
 
-    public static function getContaAtual()
+    /** Verifica se retorno do login é válido
+     * @param object $data Body de resposta da API
+     * @throws ValidationException
+     */
+    private function validaTokenApi($data)
     {
-        $data = request()->session()->get('data');
-        $data = json_decode($data);
-        foreach ($data as $conta) {
-            if (Auth::user()->getAdmEmpresaId() == $conta->e && Auth::user()->email == $conta->mail)
-                return $conta;
+        dump($data);
+        if ($data && $data->auth && $data->auth->token && $data->auth->token->access_token) {
+            $aux = @auth()->setToken($data->auth->token->access_token);
+            try {
+                //Verifica possível erro de vinculo em banco de dados
+                $payload = $aux->payload();
+                dump($payload);
+                $user = $payload['sub'];
+                if ($user) {
+                    $usuarioEntity = config('login.user_entity');
+                    $usuario = $usuarioEntity::query()->where(['id' => $user])->get()->first();
+                    if (!$usuario) {
+                        LogJob::dispatch(new Log(4, 'O usuário id ' . $user . ' do token não foi encontrado.'));
+                        throw ValidationException::withMessages(['message' => 'O usuário não possui permissão de acesso neste sistema.']);
+                    }
+                }
+                if (!auth()->check()) {
+                    LogJob::dispatch(new Log(4, 'O servidor retornou um token válido mas sistema não pôde autenticar.'));
+                    throw ValidationException::withMessages(['message' => 'Ops. O servidor de autenticação está com probleminhas.']);
+                }
+                if (config('login.use_empresa')) {
+                    if (!is_array($data->auth->empresa) || (count($data->auth->empresa) <= 0)) {
+                        LogJob::dispatch(new Log(4, 'O servidor não retornou uma listagem de empresas para login.'));
+                        throw ValidationException::withMessages(['message' => 'Ops. O servidor de autenticação está com probleminhas.']);
+                    }
+                    if (count($data->auth->empresa) > 1) {
+                        request()->session()->put('token', auth()->getToken()->get());
+                        request()->session()->put('empresas', $data->auth->empresa);
+                    } else {
+                        if (!is_numeric($payload['empresaId'])) {
+                            LogJob::dispatch(new Log(4, 'O servidor não retornou o ID da empresa no token.'));
+                            throw ValidationException::withMessages(['message' => 'Ops. O servidor de autenticação está com probleminhas.']);
+                        }
+                    }
+                }
+            } catch (\Exception $exception) {
+                Log::handleException($exception);
+                throw ValidationException::withMessages(['message' => 'Ops. O servidor de autenticação está com probleminhas.']);
+            }
+        } else {
+            LogJob::dispatch(new Log(4, 'O servidor retornou 200/201 mas dados em body são desconhecidos.'));
+            throw ValidationException::withMessages(['message' => 'Ops. O servidor de autenticação está com probleminhas.']);
         }
-        return null;
     }
 
-    /** Realiza login via API. Empresas do usuário é retornado em LoginResponseUtils->getData().
-     * @param $email
-     * @param $senha
-     * @return LoginResponseUtils
+    /** Realiza login via API
+     * @param Model|object $usuario
+     * @param string $senha
+     * @throws ValidationException
      */
-    public function login($email, $senha, $empresa)
+    public function loginApi($usuario, $senha)
     {
+        $url = config('login.api');
+        if ($url == '')
+            throw new \Exception('Parametro "login.api" não informado.');
+        $url = $url . '/login';
         $data = [
-            'app' => config('config.id_app'),
-            'email' => $email,
+            'app' => config('login.id_app'),
+            'email' => $usuario->email,
             'password' => base64_encode($senha),
-            'empresa' => $empresa,
             'client' => [
-                'user_agent' => request()->userAgent(),
-                'ip' => request()->ip(),
+                'user_agent' => Utils::getUserAgent(),
+                'ip' => Utils::getIpRequest(),
             ]
         ];
-        $body = json_encode($data);
-
-        return $this->makeRequest('POST', config('config.api_login'), $body);
-    }
-
-    /**
-     * Realiza conexão à API
-     *
-     * @param $method
-     * @param $url
-     * @param $body
-     * @param string $token
-     * @return LoginResponseUtils
-     */
-    private function makeRequest($method, $url, $body, $token = '')
-    {
         $headers = [
             'Content-type' => 'application/json',
             'Accept' => 'application/json',
         ];
-        if ($token)
-            $headers['Authorization'] = 'bearer ' . $token;
-
-        $request = new \GuzzleHttp\Psr7\Request($method, $url, $headers, $body);
-        $client = new Client([
-            'verify' => true,
-            'http_errors' => false
-        ]);
-
-        $ret = $client->send($request);
-        $body = $ret->getBody()->getContents();
-        $apiRet = @json_decode($body);
-        $response = new LoginResponseUtils($ret->getStatusCode(), $apiRet);
-
-        if (($response->getHttpReturnCode() == 200) || ($response->getHttpReturnCode() == 201)) {
-            @auth()->setToken($response->getToken());
-            //dd(@auth()->setToken($response->getToken())->payload()); //Utiliza para disparar exception e debutar o pq retornou ok mas com token invalido
+        $res = Http::withHeaders($headers)->post($url, $data);
+        if (($res->status() == 200) || ($res->status() == 201)) {
+            $this->validaTokenApi($res->object());
+        } else {
+            $data = $res->json();
+            if ($data && array_key_exists('errors', $data))
+                throw ValidationException::withMessages($data['errors']);
+            throw ValidationException::withMessages(['message' => $data['message']]);
         }
-        return $response;
     }
 
-    public function loginEmpresa($empresa)
+    /** Realiza login na empresa via API
+     * @param int $empresa
+     * @throws ValidationException
+     */
+    public function loginEmpresaApi($empresa)
     {
+        $url = config('login.api');
+        if ($url == '')
+            throw new \Exception('Parametro "login.api" não informado.');
+        $url = $url . '/loginEmpresa';
         $data = [
-            'app' => config('config.id_app'),
+            'app' => config('login.id_app'),
             'empresa' => $empresa,
             'client' => [
-                'user_agent' => request()->userAgent(),
-                'ip' => request()->ip(),
+                'user_agent' => Utils::getUserAgent(),
+                'ip' => Utils::getIpRequest(),
             ]
         ];
         $body = json_encode($data);
-
-        return $this->makeRequest('POST', config('config.api_login_empresa'), $body, auth()->getToken()->get());
+        $headers = [
+            'Content-type' => 'application/json',
+            'Accept' => 'application/json',
+            'Authorization' => 'Bearer ' . auth()->getToken()->get(),
+        ];
+        $res = Http::withHeaders($headers)->post($url, $data);
+        if (($res->status() == 200) || ($res->status() == 201)) {
+            $this->validaTokenApi($res->object());
+        } else {
+            $data = $res->json();
+            if ($data && array_key_exists('errors', $data))
+                throw ValidationException::withMessages($data['errors']);
+            throw ValidationException::withMessages(['message' => $data['message']]);
+        }
     }
 
-    /** Realiza registro de novo usuário via api. Cria uma empresa vinculada ao usuário. Retorna a empresa(s) em LoginResponseUtils->getData().
-     * @param $nome
-     * @param $email
-     * @param $password
-     * @param $cpf
-     * @return LoginResponseUtils
+    /** Realiza login
+     * @param Model|object $user
+     * @param string $senha
+     * @throws ValidationException
      */
-    public function registrar($nome, $email, $password, $cpf_cnpj)
+    public function login($user, $senha)
     {
+        $isCpf = is_numeric($user);
+        if ($isCpf)
+            $usuario = (new UsuarioService)->encontraUsuarioByCpf($user);
+        else
+            $usuario = (new UsuarioService)->encontraUsuarioByEmail($user);
+
+        if (!$usuario)
+            throw ValidationException::withMessages(['message' => 'Usuário "' . $user . '" não encontrado.']);
+
+        if (config('login.base') == 'api') {
+            $this->loginApi($usuario, $senha);
+        }
+        //TODO Fazer login via Model
+
+    }
+
+    /**
+     * Realiza login na empresa selecionada
+     * @param int $empresa ID da empresa
+     */
+    public function loginEmpresa($empresa)
+    {
+        if (config('login.base') == 'api') {
+            $this->loginEmpresaApi($empresa);
+        }
+        //TODO Fazer login via Model
+    }
+
+    /**
+     * Realiza registro de novo usuario
+     * @param array $data Dados do formulario
+     */
+    public function registrar($data)
+    {
+        $url = config('login.api');
+        if ($url == '')
+            throw new \Exception('Parametro "login.api" não informado.');
+        $url = $url . '/registrar';
         $data = [
             'app' => config('config.id_app'),
-            'nome' => $nome,
+            'nome' => $data['nome'],
             'usuario' => [
-                'email' => $email,
-                'senha' => $password,
+                'email' => $data['usuario']['email'],
+                'senha' => $data['usuario']['password'],
             ],
             'empresa' => [
-                'nome' => $nome,
-                'cpf_cnpj' => $cpf_cnpj,
+                'nome' => $data['nome'],
+                'cpf_cnpj' => $data['cpf_cnpj'],
             ],
             'client' => [
-                'user_agent' => request()->userAgent(),
-                'ip' => request()->ip(),
+                'user_agent' => Utils::getUserAgent(),
+                'ip' => Utils::getIpRequest(),
             ]
         ];
-        $body = json_encode($data);
-
-        return $this->makeRequest('POST', config('config.api_registrar'), $body);
+        $headers = [
+            'Content-type' => 'application/json',
+            'Accept' => 'application/json',
+        ];
+        $res = Http::withHeaders($headers)->post($url, $data);
+        if (($res->status() == 200) || ($res->status() == 201)) {
+            $this->validaTokenApi($res->object());
+        } else {
+            $data = $res->json();
+            if ($data && array_key_exists('errors', $data))
+                throw ValidationException::withMessages($data['errors']);
+            throw ValidationException::withMessages(['message' => $data['message']]);
+        }
     }
 
-    public function logoutWeb()
-    {
-        //TODO Invalidar token da conta atual
-        //TODO Fazer funcionalidade para sair de todos os dispositivos
-    }
-
-    /** Invalida todos os tokens das contas conectadas e invalida a sessão.
-     * @param boolean $allDevices
+    /**
+     * Realiza logout desabilitando token
+     * @param int $empresa ID da empresa
      */
-    public function logoutForgetWeb($allDevices = false)
+    public function logout()
     {
-        //TODO Percorrer tokens jwt das contas vinculadas e invalidar todas
-        if ($allDevices)
-            DB::connection('mysql-session')
-                ->delete('DELETE FROM log_sessao WHERE user_id = ' . auth()->user()->getKey());
-        request()->session()->invalidate();
+        //try {
+        auth()->parseToken();
+        //} catch (\Exception $exception) {
+
+        //}
+        //if (auth()->check()) {
+        auth()->logout();
+        //}
     }
 
-    /** Adiciona a conta na sessão do usuario e registra log e envia e-mail de notificação de novo login realizado via WEB
-     * @param string $token Token da autenticacao
-     * @param object $empresa Entidade Empresa
+    /**
+     * Remove conta do cookie
+     */
+    public function forget($email, $empresa = 0)
+    {
+        $this->removeAccountCookie($email, $empresa);
+    }
+
+    /**
+     * Encontra o usuário pelo CPF informado
+     * @param string $data CPF ou e-mail para consulta
+     * @return object|null
+     */
+    private function encontraUsuarioApi($data)
+    {
+        $url = config('login.api');
+        if ($url == '')
+            throw new \Exception('Parametro "login.api" não informado.');
+        $url = $url . '/find/' . $data;
+        $res = Http::get($url);
+        if ($res->status() != 200)
+            return null;
+        $data = $res->json();
+        if (!is_array($data))
+            return null;
+        if (count($data) != 1)
+            return null;
+        return (object)$data[0];
+    }
+
+    /**
+     * Encontra o usuário pelo CPF informado
+     * @param string $cpf CPF para consulta
+     * @return array|Usuario|Model|null
+     */
+    public function encontraUsuarioByCPF($cpf)
+    {
+        if (config('login.find_base') == 'api')
+            return $this->encontraUsuarioApi($cpf);
+        return (new UsuarioRepository)->encontraUsuarioByCPF($cpf);
+    }
+
+    /**
+     * Encontra o usuário pelo email informado
+     * @param string $email E-mail para consulta
+     * @return array|Usuario|Model|null
+     */
+    public function encontraUsuarioByEmail($email)
+    {
+        if (config('login.find_base') == 'api')
+            return $this->encontraUsuarioApi($email);
+        return (new UsuarioRepository)->encontraUsuarioByEmail($email);
+    }
+
+    /** Adiciona dados da conta logada em cookie e sessao. Retorna id da conta
+     * @param int $empresaId
+     * @param string $empresaNome
      * @return int
      */
-    public function novoLoginWeb($token, $empresa)
+    public function novoLoginWeb($empresaId = 0, $empresaNome = '')
     {
         $email = auth()->user()->email;
+        $empresa = new stdClass();
+        $empresa->id = $empresaId;
+        $empresa->nome = $empresaNome;
         $pos = $this->updateSession($email, $empresa);
-        $this->updateCookie($email, $empresa);
-        return $pos;
+        $cookie = $this->updateCookie($email, $empresa);
+        return [
+            'pos' => $pos,
+            'cookie' => $cookie,
+        ];
     }
 
     /** Atualiza sessão do usuario com os dados da nova conexao
@@ -186,7 +324,9 @@ class UsuarioService
      */
     private function updateSession($email, $empresa)
     {
-        $data = request()->session()->get('data');
+        dump(config('login.session_data'));
+        $data = request()->session()->get(config('login.session_data'));
+        dump($data);
         if (($data == '') || ($data == false) || ($data == null)) {
             $data = array();
             $pos = 0;
@@ -195,7 +335,7 @@ class UsuarioService
             $pos = count($data);
             foreach ($data as $i => $conta) {
                 if ($conta->mail == $email)
-                    if ($conta->e == $empresa->id) {
+                    if (config('login.use_empresa') && ($conta->e == $empresa->id)) {
                         $pos = $i;
                         break;
                     }
@@ -203,12 +343,13 @@ class UsuarioService
         }
         $data[$pos] = new stdClass;
         $data[$pos]->mail = $email;
-        $data[$pos]->e = $empresa->id;
-        $data[$pos]->en = $empresa->nome;
+        $data[$pos]->e = config('login.use_empresa') ? $empresa->id : 0;
+        $data[$pos]->en = config('login.use_empresa') ? $empresa->nome : '';
         $data[$pos]->t = auth()->getToken()->get();
         $data[$pos]->exp = auth()->payload()->get('exp');
         $data[$pos]->i = $pos;
-        request()->session()->put('data', json_encode($data));
+        dump($data);
+        request()->session()->put(config('login.session_data'), json_encode($data));
         return $pos;
     }
 
@@ -218,7 +359,9 @@ class UsuarioService
      */
     private function updateCookie($email, $empresa)
     {
-        $data = @json_decode(request()->cookie('accounts'));
+        dump(config('login.accounts_cookie'));
+        $data = @json_decode(request()->cookie(config('login.accounts_cookie')));
+        dump($data);
         if (($data == '') || ($data == false) || ($data == null)) {
             $data = array();
             $pos = 0;
@@ -226,7 +369,7 @@ class UsuarioService
             $pos = count($data);
             foreach ($data as $i => $conta) {
                 if ($conta->email == $email)
-                    if ($conta->empresaId == $empresa->id) {
+                    if (config('login.use_empresa') && ($conta->empresaId == $empresa->id)) {
                         $pos = $i;
                         break;
                     }
@@ -235,9 +378,38 @@ class UsuarioService
         $data[$pos] = new stdClass;
         $data[$pos]->email = $email;
         $data[$pos]->nome = auth()->user()->nome . ' ' . auth()->user()->sobrenome;
-        $data[$pos]->empresaId = $empresa->id;
-        $data[$pos]->empresa = $empresa->nome;
-        Cookie::queue(Cookie::make('accounts', json_encode($data), 0));
+        $data[$pos]->empresaId = config('login.use_empresa') ? $empresa->id : 0;
+        $data[$pos]->empresa = config('login.use_empresa') ? $empresa->nome : '';
+        dump($data);
+//        Cookie::queue(Cookie::make(config('login.accounts_cookie'), json_encode($data), 0));
+        return Cookie::make(config('login.accounts_cookie'), json_encode($data), 0);
+    }
+
+    /** Atualiza todas as contas
+     * @param $email
+     * @param $empresaId
+     * @return array
+     */
+    public function removeAccountCookie($email, $empresaId)
+    {
+        $data = @json_decode(request()->cookie(config('login.accounts_cookie')));
+        $newData = array();
+        if ($data == true) {
+            foreach ($data as $conta) {
+                if ($conta->email != $email) {
+                    $newData[] = $conta;
+                    continue;
+                }
+                if (config('login.use_empresa') && ($empresaId != 0)) {
+                    if (($conta->empresaId != $empresaId)) {
+                        $newData[] = $conta;
+                        continue;
+                    }
+                }
+            }
+        }
+        Cookie::queue(Cookie::make(config('login.accounts_cookie'), json_encode($newData), 0));
+        return $newData;
     }
 
     /** Retorna as contas salvas no navegador do cliente
@@ -261,21 +433,24 @@ class UsuarioService
                 }
         }
 
-        return $data;
+        //Envia apenas usuarios, sem empresas, para tela de login
+        $result = array();
+        foreach ($data as $item)
+            $result[$item->email] = $item;
+        return $result;
     }
 
+    /** Retorna dados da conta salva na sessão
+     * @return array
+     */
     public static function getContas()
     {
         $accounts = array();
         $data = request()->session()->get(config('login.session_data'));
         if ($data == '')
             return $accounts;
-        //TODO Recuperar status do token jwt para mostrar conta Conectada ou Desconectada
         $data = json_decode($data);
         foreach ($data as $conta) {
-            //TODO Mostrar data de expiração ou status do token
-            //TODO Por enquanto data de expiracao eh salva fora do token, nao recupera a data atualizada do token
-//            $conta->s = date_create()->setTimestamp($conta->exp)->format('h:i:s');
             $accounts[] = $conta;
         }
         return $accounts;
@@ -295,23 +470,5 @@ class UsuarioService
         } catch (JWTException $e) { //general JWT exception
             return false;
         }
-    }
-
-    /** Atualiza todas as contas
-     * @param Array $contas
-     */
-    public function removeAccountCookie($email, $empresa)
-    {
-        $data = @json_decode(request()->cookie('accounts'));
-        $newData = array();
-        if ($data == true) {
-            foreach ($data as $conta) {
-                if (($conta->email != $email) || ($conta->empresaId != $empresa)) {
-                    $newData[] = $conta;
-                }
-            }
-        }
-        Cookie::queue(Cookie::make('accounts', json_encode($newData), 0));
-        return $newData;
     }
 }
