@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Validation\ValidationException;
 use stdClass;
+use Tymon\JWTAuth\Facades\JWTAuth;
 
 /**
  * Class UsuarioService
@@ -383,9 +384,7 @@ class UsuarioService
      */
     private function updateSession($email, $empresa)
     {
-        $data = @json_decode(request()->session()->get(config('login.session_data')));
-        if (!is_array($data))
-            $data = array();
+        $data = $this->getContas();
         $pos = count($data);
         foreach ($data as $i => $conta) {
             if ($conta->mail == $email)
@@ -434,20 +433,18 @@ class UsuarioService
      */
     public function removeAccountSessao($email, $empresaId = 0)
     {
-        $data = json_decode(request()->session()->get(config('login.session_data')));
+        $data = $this->getContas();
         $newData = array();
-        if (is_array($data)) {
-            foreach ($data as $conta) {
-                if ($conta->mail != $email)
-                    continue;
-                if ($empresaId === false)
-                    continue;
-                if ($conta->e != $empresaId)
-                    continue;
-                $newData[] = $conta;
-            }
-            request()->session()->put(config('login.session_data'), json_encode($newData));
+        foreach ($data as $conta) {
+            if ($conta->mail != $email)
+                continue;
+            if ($empresaId === false)
+                continue;
+            if ($conta->e != $empresaId)
+                continue;
+            $newData[] = $conta;
         }
+        request()->session()->put(config('login.session_data'), json_encode($newData));
         return $newData;
     }
 
@@ -491,6 +488,8 @@ class UsuarioService
         $data = json_decode(request()->session()->get(config('login.session_data')));
         if (!is_array($data))
             return [];
+        foreach ($data as $i => $conta)
+            $data[$i]->conectado = $this->validaContaConectada($conta);
         return $data;
     }
 
@@ -512,4 +511,19 @@ class UsuarioService
         return null;
     }
 
+    /**
+     * Verifica se conta do usuario está com token ativo e válido
+     *
+     * @param $conta
+     * @return bool
+     */
+    public function validaContaConectada($conta)
+    {
+        try {
+            JWTAuth::setToken($conta->t)->payload();
+            return true;
+        } catch (\Tymon\JWTAuth\Exceptions\JWTException $e) { //general JWT exception
+            return false;
+        }
+    }
 }
