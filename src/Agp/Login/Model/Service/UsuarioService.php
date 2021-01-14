@@ -283,7 +283,7 @@ class UsuarioService
     public function logout()
     {
         try {
-            $payload = auth()->parseToken()->payload();
+            $payload = auth()->payload();
             auth()->logout();
             $email = auth()->user()->email;
             $empresa = $payload['empresaId'] ?? 0;
@@ -502,9 +502,10 @@ class UsuarioService
         if (!auth()->check())
             return null;
         $data = $this->getContas();
+        $email = auth()->user()->email;
+        $payload = auth()->payload();
+        $empresa = $payload['empresaId'] ?? 0;
         foreach ($data as $conta) {
-            $email = auth()->user()->email;
-            $empresa = $payload['empresaId'] ?? 0;
             if (($conta->mail == $email) && ($conta->e == $empresa))
                 return $conta;
         }
