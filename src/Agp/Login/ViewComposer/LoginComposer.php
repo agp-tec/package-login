@@ -6,12 +6,15 @@ namespace Agp\Login\ViewComposer;
 
 use Agp\Login\Model\Service\UsuarioService;
 use Agp\Notification\Model\Entity\Usuario;
+use Illuminate\Contracts\Foundation\Application;
+use Illuminate\Contracts\View\Factory;
 use Illuminate\Validation\ValidationException;
+use Illuminate\View\View;
 
 class LoginComposer
 {
     /** Retorna o formulario de entrada de usuario
-     * @return \Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\View\Factory|\Illuminate\View\View
+     * @return Application|Factory|View
      */
     public static function index()
     {
@@ -20,7 +23,7 @@ class LoginComposer
     }
 
     /** Retorna o formulario de registro de usuario
-     * @return \Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\View\Factory|\Illuminate\View\View
+     * @return Application|Factory|View
      */
     public static function create()
     {
@@ -28,7 +31,8 @@ class LoginComposer
     }
 
     /** Retorna o formulario de login de usuario
-     * @return \Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\View\Factory|\Illuminate\View\View
+     * @return Application|Factory|View
+     * @throws ValidationException
      */
     public static function pass($user)
     {
@@ -38,7 +42,7 @@ class LoginComposer
     }
 
     /** Retorna o formulario de selecao de empresa
-     * @return \Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\View\Factory|\Illuminate\View\View
+     * @return Application|Factory|View
      */
     public static function empresa($empresas)
     {

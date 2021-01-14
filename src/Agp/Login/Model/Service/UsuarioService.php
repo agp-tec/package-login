@@ -481,4 +481,35 @@ class UsuarioService
             return [];
         return $data;
     }
+
+    /**
+     * Retorna dados da conta salva na sessão
+     * @return array
+     */
+    public function getContas()
+    {
+        $data = json_decode(request()->session()->get(config('login.session_data')));
+        if (!is_array($data))
+            return [];
+        return $data;
+    }
+
+    /**
+     * Retorna a conta atual do usuario
+     * @return array|null
+     */
+    public function getContaAtual()
+    {
+        if (!auth()->check())
+            return null;
+        $data = $this->getContas();
+        foreach ($data as $conta) {
+            $email = auth()->user()->email;
+            $empresa = $payload['empresaId'] ?? 0;
+            if (($conta->mail == $email) && ($conta->e == $empresa))
+                return $conta;
+        }
+        return null;
+    }
+
 }
