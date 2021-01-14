@@ -1,3 +1,4 @@
+@include('Login::flash-message')
 <div class="col-12">
     <ul class="list-group">
         @foreach ($empresas as $empresa)

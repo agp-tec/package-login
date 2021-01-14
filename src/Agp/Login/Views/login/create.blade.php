@@ -1,7 +1,8 @@
 <form class="form" novalidate="novalidate" method="post" action="{{ route('web.login.store') }}">
     @csrf
+    @include('Login::flash-message')
     <div class="form-group">
-        <input class="form-control form-control-solid h-auto py-5 px-6 textodebug" type="text"
+        <input class="form-control form-control-solid h-auto py-5 px-6 textodebug" type="text" autofocus
                placeholder="Nome completo" name="nome" value="{{ old('nome') }}" autocomplete="off"/>
     </div>
     <div class="form-group">

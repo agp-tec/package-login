@@ -8,6 +8,7 @@ return [
     'accounts_cookie' => env('LOGIN_ACCOUNTS_COOKIE', 'accounts'),
     'session_data' => env('LOGIN_SESSION_DATA', 'data'),
     'user_entity' => env('LOGIN_USER_ENTITY', 'App\Model\Entity\Usuario.php'),
+    'pos_login_route' => env('LOGIN_POS_LOGIN_ROUTE'),
     'use_empresa' => true, //Indica se sistema espera um token com empresaId
     'use_conta_id' => true, //Indica se sistema espera o parametro contaId nas rodas
 

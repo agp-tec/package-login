@@ -99,13 +99,13 @@ class AuthController extends Controller
             throw ValidationException::withMessages(['message' => 'Houve uma falha na assinatura. Tente novamente.']);
 
         (new UsuarioService)->login($user, $request->get('password'));
-
-        if (config('login.use_empresa'))
+        if (config('login.use_empresa')) {
+            if (auth()->payload() && auth()->payload()['empresaId'])
+                return redirect()->route(config('login.pos_login_route'));
             return redirect()->to(URL::signedRoute('web.login.empresaForm', ['user' => $user]));
+        }
 
-        (new UsuarioService())->novoLoginWeb();
-
-        return redirect()->route('web.home');
+        return redirect()->route(config('login.pos_login_route'));
     }
 
     /**
@@ -130,11 +130,7 @@ class AuthController extends Controller
 
         (new UsuarioService())->registrar($request->all());
 
-        $res = (new UsuarioService())->novoLoginWeb();
-        dd($res);
-        if (config('login.use_conta_id'))
-            return redirect()->route('web.home', ['contaId' => $res['pos']])->withCookie($res['cookie']);
-        return redirect()->route('web.home')->withCookie($res['cookie']);
+        return redirect()->route(config('login.pos_login_route'));
     }
 
     /** Mostra formulario de selecao de empresa
@@ -168,12 +164,12 @@ class AuthController extends Controller
             return redirect()->route('web.login.index')->withErrors('Você deve se logar para acessar a página');
 
         if (!$request->hasValidSignature()) {
-            auth()->logout();
+            (new UsuarioService())->logout();
             return redirect()->route('web.login.index')->withErrors('Houve uma falha na assinatura. Tente novamente');
         }
 
         if (auth()->user()->email != $user) {
-            auth()->logout();
+            (new UsuarioService())->logout();
             return redirect()->route('web.login.index')->withErrors('Houve uma falha na assinatura. Tente novamente');
         }
 
@@ -185,23 +181,51 @@ class AuthController extends Controller
 
         (new UsuarioService())->loginEmpresa($request->get('empresa'));
 
-        $res = (new UsuarioService())->novoLoginWeb($request->get('empresa'), $request->get('nome'));
-        dump($res);
-//        die('redirecting');
-        if (config('login.use_conta_id'))
-            return redirect()->route('web.home', ['contaId' => $res['pos']])->withCookie($res['cookie']);
-        return redirect()->route('web.home')->withCookie($res['cookie']);
+        return redirect()->route(config('login.pos_login_route'));
     }
 
+    /** Envia e-mail de recuperação de senha
+     * @param Request $request
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function recover(Request $request, $user)
+    {
+        if (!$request->hasValidSignature())
+            return redirect()->route('web.login.index')->withErrors('Houve uma falha na assinatura. Tente novamente');
+
+        if ((new UsuarioService())->recuperaSenha($user))
+            return redirect()->route('web.login.index')->with('success', 'Um e-mail foi enviado. Siga as instruções nele contidas.');
+        return redirect()->route('web.login.index')->with('error', 'Não foi possível concluir a solicitação. Tente novamente.');
+    }
+
+    /** Desloga usuário
+     * @param Request $request
+     * @return \Illuminate\Http\RedirectResponse
+     */
     public function logout(Request $request)
     {
         (new UsuarioService())->logout();
         return redirect()->route('web.login.index');
     }
 
-    public function forget(Request $request, $email, $empresa = null)
+    /** Desloga usuário de todos os dispositivos e aplicativos
+     * @param Request $request
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function logoutAll(Request $request)
     {
-        (new UsuarioService())->forget($email, $empresa);
+        (new UsuarioService())->logoutAll();
+        return redirect()->route('web.login.index');
+    }
+
+    /** Remove usuario do cookie
+     * @param Request $request
+     * @param string $email
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function forget(Request $request, $email)
+    {
+        (new UsuarioService())->forget($email);
         return redirect()->route('web.login.index');
     }
 }

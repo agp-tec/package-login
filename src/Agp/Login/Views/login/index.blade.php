@@ -28,29 +28,10 @@
             </div>
         </div>
     @endif
-    @if(isset($errors) && $errors->any())
-        <div
-            class="alert alert-custom @if(Route::current()->getName() == 'login') alert-outline-2x alert-outline-danger @else alert-light-danger @endif fade show mb-5">
-            <div class="alert-icon">
-                <i class="flaticon-warning"></i>
-            </div>
-            <ul class="alert-text mb-0">
-                @foreach ($errors->all() as $error)
-                    <li>{{ $error }}</li>
-                @endforeach
-            </ul>
-            <div class="alert-close">
-                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-                    <span aria-hidden="true">
-                        <i class="ki ki-close"></i>
-                    </span>
-                </button>
-            </div>
-        </div>
-    @endif
+    @include('Login::flash-message')
     <input type="hidden" id="empresa" name="empresa" value="">
     <div class="form-group">
-        <input class="form-control form-control-solid h-auto py-5 px-6 cpfdebug"
+        <input class="form-control form-control-solid h-auto py-5 px-6 cpfdebug" autofocus
                placeholder="E-mail ou CPF" id="email_cpf" name="email_cpf"/>
     </div>
     <div class="form-group d-flex flex-wrap justify-content-between align-items-center">
