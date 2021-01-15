@@ -6,6 +6,7 @@ namespace Agp\Login\Controller\Web;
 use Agp\BaseUtils\Helper\Utils;
 use Agp\Login\Controller\Controller;
 use Agp\Login\Model\Service\UsuarioService;
+use Agp\Login\Utils\LoginUtils;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\Validator;
@@ -19,7 +20,8 @@ class AuthController extends Controller
     public function index(Request $request)
     {
         $contas = (new UsuarioService)->getAccountsForLogin();
-        return view(config('login.view_index'), compact('contas'));
+        $accept = LoginUtils::getAcceptLoginTitle();
+        return view(config('login.view_index'), compact('contas', 'accept'));
     }
 
     /** Retorna o formulario de registro
@@ -35,30 +37,35 @@ class AuthController extends Controller
      */
     public function find(Request $request)
     {
-        $cpf = str_replace(['.', '-', ' '], '', $request['email_cpf']);
+        $rule = config('login.login_accept');
+        $cpf = str_replace(['.', '-', ' '], '', $request['login']);
         $isCpf = is_numeric($cpf);
-        if ($isCpf) {
+        //TODO Fazer login via telefone se não for cpf
+        //   $isCpf = LoginUtils::validaCpf($request);
+        if ($isCpf && array_key_exists('cpf', $rule)) {
             $cpf = Utils::mask('###.###.###-##', $cpf);
-            $request->merge(['email_cpf' => $cpf]);
+            $request->merge(['cpf' => $cpf]);
             $rule = [
+                'cpf' => $rule['cpf'],
                 'onsuccess' => 'nullable|string',
-                'email_cpf' => 'required|cpf|formato_cpf',
             ];
-        } else {
+        } elseif (array_key_exists('e-mail', $rule)) {
+            $request->merge(['e-mail' => $request['login']]);
             $rule = [
-                'email_cpf' => 'required|email',
+                'e-mail' => $rule['e-mail'],
                 'onsuccess' => 'nullable|string',
             ];
         }
         Validator::make($request->all(), $rule)->validate();
-        if (!$isCpf)
-            $email = $request->get('email_cpf');
         if ($isCpf)
             $user = (new UsuarioService)->encontraUsuarioByCpf($cpf);
         else
-            $user = (new UsuarioService)->encontraUsuarioByEmail($email);
+            $user = (new UsuarioService)->encontraUsuarioByEmail($request->get('e-mail'));
+
         if (!$user)
-            throw ValidationException::withMessages(['message' => 'Usuário "' . $request->get('email_cpf') . '" não encontrado.']);
+            return redirect()->route(config('login.user_notfound_route'))
+                ->withInput($request->all())
+                ->with('error', 'Usuário "' . ($isCpf ? $cpf : $request->get('e-mail')) . '" não encontrado.');
         if ($request->get('onsuccess'))
             return redirect()->to($request->get('onsuccess'));
         return redirect()->to(URL::signedRoute('web.login.pass', ['user' => $user->email]));
@@ -115,15 +122,10 @@ class AuthController extends Controller
      */
     public function store(Request $request)
     {
-        $nome = $request['nome'];
-        $cpf_cnpj = $request['cpf_cnpj'];
-        $email = $request['usuario']['email'];
-        $senha = $request['usuario']['senha'];
-
         $rule = [
             'nome' => 'required|string',
-            'cpf_cnpj' => 'required|cpf_cnpj|formato_cpf_cnpj',
-            'usuario.email' => 'required|email',
+            'cpf' => 'required|cpf_cnpj|formato_cpf_cnpj',
+            'e-mail' => 'required|email',
             'usuario.senha' => 'required|string',
         ];
         Validator::make($request->all(), $rule)->validate();

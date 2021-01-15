@@ -5,7 +5,7 @@ namespace Agp\Login\ViewComposer;
 
 
 use Agp\Login\Model\Service\UsuarioService;
-use Agp\Notification\Model\Entity\Usuario;
+use Agp\Login\Utils\LoginUtils;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Contracts\View\Factory;
 use Illuminate\Validation\ValidationException;
@@ -19,7 +19,8 @@ class LoginComposer
     public static function index()
     {
         $contas = (new UsuarioService)->getAccountsForLogin();
-        return view('Login::login.index', compact('contas'));
+        $accept = LoginUtils::getAcceptLoginTitle();
+        return view('Login::login.index', compact('contas', 'accept'));
     }
 
     /** Retorna o formulario de registro de usuario

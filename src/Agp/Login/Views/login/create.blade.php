@@ -7,12 +7,12 @@
     </div>
     <div class="form-group">
         <input class="form-control form-control-solid h-auto py-5 px-6 cpfcnpj" type="text"
-               placeholder="CPF ou CNPJ" name="cpf_cnpj" value="{{ old('cpf_cnpj') }}" autocomplete="off"/>
+               placeholder="CPF" name="cpf" value="{{ old('cpf') }}" autocomplete="off"/>
     </div>
     <div class="form-group">
         <input class="form-control form-control-solid h-auto py-5 px-6 emaildebug" type="email"
                placeholder="E-mail"
-               name="usuario[email]" value="{{ old('usuario.email') }}" autocomplete="off"/>
+               name="e-mail" value="{{ old('e-mail') }}" autocomplete="off"/>
     </div>
     <div class="form-group">
         <div class="input-group" id="show_hide_password">

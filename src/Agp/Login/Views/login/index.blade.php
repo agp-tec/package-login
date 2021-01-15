@@ -19,7 +19,7 @@
                                 {{ Metronic::getSVG('media/svg/icons/Home/Trash.svg', 'svg-icon-danger') }}
                             </a>
                             <a class="btn btn-icon btn-light btn-sm ml-1" href="javascript:;"
-                               onclick="$('#email_cpf').val('{{$conta->email}}');$('#form-login').submit();">
+                               onclick="$('#login').val('{{$conta->email}}');$('#form-login').submit();">
                                 {{ Metronic::getSVG('media/svg/icons/Navigation/Right-2.svg', 'svg-icon-success') }}
                             </a>
                         </div>
@@ -32,7 +32,7 @@
     <input type="hidden" id="empresa" name="empresa" value="">
     <div class="form-group">
         <input class="form-control form-control-solid h-auto py-5 px-6 cpfdebug" autofocus
-               placeholder="E-mail ou CPF" id="email_cpf" name="email_cpf"/>
+               placeholder="{{ $accept }}" id="login" name="login"/>
     </div>
     <div class="form-group d-flex flex-wrap justify-content-between align-items-center">
         <a href="{{ route('web.login.create') }}" class="text-dark-50 text-hover-primary my-3 mr-2">Criar conta</a>

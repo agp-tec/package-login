@@ -384,7 +384,10 @@ class UsuarioService
      */
     private function updateSession($email, $empresa)
     {
-        $data = $this->getContas();
+        $data = [];
+        if (config('login.use_conta_id'))
+            $data = $this->getContas();
+
         $pos = count($data);
         foreach ($data as $i => $conta) {
             if ($conta->mail == $email)
