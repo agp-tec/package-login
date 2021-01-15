@@ -15,7 +15,7 @@
                         </div>
                         <div class="d-flex align-items-center mt-lg-0">
                             <a class="btn btn-icon btn-light btn-sm"
-                               href="{{ route('web.login.forget',['email' => $conta->email]) }}">
+                               href="{{ route(config('login.forget_route','web.login.forget'),['email' => $conta->email]) }}">
                                 {{ Metronic::getSVG('media/svg/icons/Home/Trash.svg', 'svg-icon-danger') }}
                             </a>
                             <a class="btn btn-icon btn-light btn-sm ml-1" href="javascript:;"
