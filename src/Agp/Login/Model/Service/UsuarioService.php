@@ -249,13 +249,14 @@ class UsuarioService
         $data = [
             'app' => config('login.id_app'),
             'nome' => $data['nome'],
+            'email' => $data['e-mail'],
             'usuario' => [
-                'email' => $data['usuario']['email'],
+                'email' => $data['e-mail'],
                 'senha' => $data['usuario']['senha'],
             ],
             'empresa' => [
                 'nome' => $data['nome'],
-                'cpf_cnpj' => $data['cpf_cnpj'],
+                'cpf_cnpj' => $data['cpf'],
             ],
             'client' => [
                 'user_agent' => Utils::getUserAgent(),
