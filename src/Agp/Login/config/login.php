@@ -8,7 +8,7 @@ return [
     'accounts_cookie' => env('LOGIN_ACCOUNTS_COOKIE', 'accounts'),
     'session_data' => env('LOGIN_SESSION_DATA', 'data'),
     'user_entity' => env('LOGIN_USER_ENTITY', 'App\Model\Entity\Usuario.php'),
-    'pos_login_route' => env('LOGIN_POS_LOGIN_ROUTE', 'pos-login'),
+    'pos_login_route' => env('LOGIN_POS_LOGIN_ROUTE', 'web.pos-login'),
     'user_notfound_route' => env('LOGIN_USER_NOT_FOUND_ROUTE', 'web.login.index'),
     'forget_route' => env('LOGIN_FORGET_ROUTE', 'web.login.forget'),
     'use_empresa' => true, //Indica se sistema espera um token com empresaId

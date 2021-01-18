@@ -33,7 +33,8 @@ class AuthController extends Controller
     }
 
     /** Encontra usuário através do dado e-mail ou CPF
-     * @return \Illuminate\View\View
+     * @return \Illuminate\Http\RedirectResponse
+     * @throws ValidationException
      */
     public function find(Request $request)
     {
@@ -62,10 +63,14 @@ class AuthController extends Controller
         else
             $user = (new UsuarioService)->encontraUsuarioByEmail($request->get('e-mail'));
 
-        if (!$user)
-            return redirect()->route(config('login.user_notfound_route'))
-                ->withInput($request->all())
-                ->with('error', 'Usuário "' . ($isCpf ? $cpf : $request->get('e-mail')) . '" não encontrado.');
+        if (!$user) {
+            $redirect = config('login.user_notfound_route');
+            if ($redirect == 'web.login.index')
+                return redirect()->route()
+                    ->withInput($request->all())
+                    ->with('error', 'Usuário "' . ($isCpf ? $cpf : $request->get('e-mail')) . '" não encontrado.');
+            return redirect()->route()->withInput($request->all());
+        }
         if ($request->get('onsuccess'))
             return redirect()->to($request->get('onsuccess'));
         return redirect()->to(URL::signedRoute('web.login.pass', ['user' => $user->email]));

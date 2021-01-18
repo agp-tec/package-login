@@ -50,12 +50,12 @@ class UsuarioService
                     LogJob::dispatch(new Log(4, 'O servidor retornou um token válido mas sistema não pôde autenticar.'));
                     throw ValidationException::withMessages(['message' => 'Ops. O servidor de autenticação está com probleminhas.']);
                 }
+                request()->session()->put('token', auth()->getToken()->get());
                 if (config('login.use_empresa')) {
                     if (!is_array($data->auth->empresa) || (count($data->auth->empresa) <= 0)) {
                         LogJob::dispatch(new Log(4, 'O servidor não retornou uma listagem de empresas para login.'));
                         throw ValidationException::withMessages(['message' => 'Ops. O servidor de autenticação está com probleminhas.']);
                     }
-                    request()->session()->put('token', auth()->getToken()->get());
                     request()->session()->put('empresas', $data->auth->empresa);
                     if (count($data->auth->empresa) == 1) {
                         if (!is_numeric($payload['empresaId'])) {
