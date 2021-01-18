@@ -129,7 +129,7 @@ class AuthController extends Controller
     {
         $rule = [
             'nome' => 'required|string',
-            'cpf' => 'required|cpf_cnpj|formato_cpf_cnpj',
+            'cpf' => 'required|cpf|formato_cpf',
             'e-mail' => 'required|email',
             'usuario.senha' => 'required|string',
         ];
