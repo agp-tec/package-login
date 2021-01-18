@@ -66,10 +66,10 @@ class AuthController extends Controller
         if (!$user) {
             $redirect = config('login.user_notfound_route');
             if ($redirect == 'web.login.index')
-                return redirect()->route()
+                return redirect()->route($redirect)
                     ->withInput($request->all())
                     ->with('error', 'Usuário "' . ($isCpf ? $cpf : $request->get('e-mail')) . '" não encontrado.');
-            return redirect()->route()->withInput($request->all());
+            return redirect()->route($redirect)->withInput($request->all());
         }
         if ($request->get('onsuccess'))
             return redirect()->to($request->get('onsuccess'));
