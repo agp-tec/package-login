@@ -25,12 +25,31 @@ use Tymon\JWTAuth\Facades\JWTAuth;
  */
 class UsuarioService
 {
+    /** Executa chamada para callback da aplicacao
+     * @param int $user Id do usuário logado
+     * @param string $acao Indica a ação executada sendo login, login_empresa ou registro
+     * @throws ValidationException
+     */
+    private function callbackLogin($user, $acao)
+    {
+        try {
+            $classCallback = config('login.user_login_callback');
+            if (class_exists($classCallback)) {
+                $obj = new $classCallback();
+                if (method_exists($obj, 'loginCallback'))
+                    $obj->loginCallback($acao, $user);
+            }
+        } catch (Exception $exception) {
+
+        }
+    }
 
     /** Verifica se retorno do login é válido
      * @param object $data Body de resposta da API
+     * @param bool $registro Indica se é um registro de usuario
      * @throws ValidationException
      */
-    private function validaTokenApi($data)
+    private function validaTokenApi($data, $acao)
     {
         if ($data && $data->auth && $data->auth->token && $data->auth->token->access_token) {
             $aux = @auth()->setToken($data->auth->token->access_token);
@@ -39,6 +58,8 @@ class UsuarioService
                 $payload = $aux->payload();
                 $user = $payload['sub'];
                 if ($user) {
+                    if ($acao == 'registro')
+                        $this->callbackLogin($user, 'registro');
                     $usuarioEntity = config('login.user_entity');
                     $usuario = $usuarioEntity::query()->where(['id' => $user])->get()->first();
                     if (!$usuario) {
@@ -50,6 +71,7 @@ class UsuarioService
                     LogJob::dispatch(new Log(4, 'O servidor retornou um token válido mas sistema não pôde autenticar.'));
                     throw ValidationException::withMessages(['message' => 'Ops. O servidor de autenticação está com probleminhas.']);
                 }
+                $this->callbackLogin($user, 'login');
                 request()->session()->put('token', auth()->getToken()->get());
                 if (config('login.use_empresa')) {
                     if (!is_array($data->auth->empresa) || (count($data->auth->empresa) <= 0)) {
@@ -62,6 +84,7 @@ class UsuarioService
                             LogJob::dispatch(new Log(4, 'O servidor não retornou o ID da empresa no token.'));
                             throw ValidationException::withMessages(['message' => 'Ops. O servidor de autenticação está com probleminhas.']);
                         }
+                        $this->callbackLogin($user, 'login_empresa');
                     }
                 }
             } catch (Exception $exception) {
@@ -100,7 +123,7 @@ class UsuarioService
         ];
         $res = Http::withHeaders($headers)->post($url, $data);
         if (($res->status() == 200) || ($res->status() == 201)) {
-            $this->validaTokenApi($res->object());
+            $this->validaTokenApi($res->object(), 'login');
         } else {
             $data = $res->json();
             if ($data && array_key_exists('errors', $data))
@@ -134,7 +157,7 @@ class UsuarioService
         ];
         $res = Http::withHeaders($headers)->post($url, $data);
         if (($res->status() == 200) || ($res->status() == 201)) {
-            $this->validaTokenApi($res->object());
+            $this->validaTokenApi($res->object(), 'login_empresa');
         } else {
             $data = $res->json();
             if ($data && array_key_exists('errors', $data))
@@ -250,26 +273,30 @@ class UsuarioService
             'app' => config('login.id_app'),
             'nome' => $data['nome'],
             'email' => $data['e-mail'],
+            'tipo_doc' => '1',
+            'doc' => $data['cpf'],
             'usuario' => [
                 'email' => $data['e-mail'],
                 'senha' => $data['usuario']['senha'],
-            ],
-            'empresa' => [
-                'nome' => $data['nome'],
-                'cpf_cnpj' => $data['cpf'],
             ],
             'client' => [
                 'user_agent' => Utils::getUserAgent(),
                 'ip' => Utils::getIpRequest(),
             ]
         ];
+        if (config('login.use_empresa')) {
+            $data['empresa'] = [
+                'nome' => $data['nome'],
+                'cpf_cnpj' => $data['cpf'],
+            ];
+        }
         $headers = [
             'Content-type' => 'application/json',
             'Accept' => 'application/json',
         ];
         $res = Http::withHeaders($headers)->post($url, $data);
         if (($res->status() == 200) || ($res->status() == 201)) {
-            $this->validaTokenApi($res->object());
+            $this->validaTokenApi($res->object(), 'registro');
         } else {
             $data = $res->json();
             if ($data && array_key_exists('errors', $data))
