@@ -287,7 +287,7 @@ class UsuarioService
         if (config('login.use_empresa')) {
             $data['empresa'] = [
                 'nome' => $data['nome'],
-                'cpf_cnpj' => $data['cpf'],
+                'cpf_cnpj' => $data['doc'],
             ];
         }
         $headers = [
