@@ -10,9 +10,11 @@ use Agp\Log\Log;
 use Agp\Login\Model\Repository\UsuarioRepository;
 use Exception;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cookie;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Validation\ValidationException;
 use stdClass;
 use Tymon\JWTAuth\Facades\JWTAuth;
@@ -185,6 +187,7 @@ class UsuarioService
         if (config('login.base') == 'api') {
             $this->loginApi($usuario, $senha);
         }
+        throw new Exception('Método login não implementado para login_base=entity');
         //TODO Fazer login via Model
 
     }
@@ -199,6 +202,7 @@ class UsuarioService
         if (config('login.base') == 'api') {
             $this->loginEmpresaApi($empresa);
         }
+        throw new Exception('Método loginEmpresa não implementado para login_base=entity');
         //TODO Fazer login via Model
     }
 
@@ -242,6 +246,7 @@ class UsuarioService
     {
         if (config('login.base') == 'api')
             return $this->recuperaSenhaApi($email);
+        throw new Exception('Método recuperaSenha não implementado para login_base=entity');
         //TODO Fazer login via Model
     }
 
@@ -255,6 +260,7 @@ class UsuarioService
         if (config('login.base') == 'api') {
             $this->registrarApi($data);
         }
+        throw new Exception('Método registrar não implementado para login_base=entity');
         //TODO Fazer login via Model
     }
 
@@ -557,5 +563,23 @@ class UsuarioService
         } catch (\Tymon\JWTAuth\Exceptions\JWTException $e) { //general JWT exception
             return false;
         }
+    }
+
+    /**
+     * Salva dados da requisição para redirecionar usuário no momento de re-login
+     *
+     * @param Request $request Dados da requisição
+     * @param int $contaId Id da conta
+     */
+    public function salvaDadosUrl(Request $request, $contaId = 0)
+    {
+        $goto = array();
+        if (($request->method() == 'POST') || ($request->method() == 'PUT') || ($request->method() == 'PATCH') || ($request->method() == 'DELETE'))
+            $goto['url'] = URL::previous();
+        else
+            $goto['url'] = config('app.url') . $request->getRequestUri();
+        $goto['input'] = $request->input();
+        $goto['contaId'] = $contaId;
+        request()->session()->put('goto', json_encode($goto));
     }
 }

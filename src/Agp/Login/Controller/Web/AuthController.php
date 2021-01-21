@@ -7,10 +7,12 @@ use Agp\BaseUtils\Helper\Utils;
 use Agp\Login\Controller\Controller;
 use Agp\Login\Model\Service\UsuarioService;
 use Agp\Login\Utils\LoginUtils;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
+use Illuminate\View\View;
 
 class AuthController extends Controller
 {
@@ -33,7 +35,7 @@ class AuthController extends Controller
     }
 
     /** Encontra usuário através do dado e-mail ou CPF
-     * @return \Illuminate\Http\RedirectResponse
+     * @return RedirectResponse
      * @throws ValidationException
      */
     public function find(Request $request)
@@ -73,11 +75,12 @@ class AuthController extends Controller
         }
         if ($request->get('onsuccess'))
             return redirect()->to($request->get('onsuccess'));
-        return redirect()->to(URL::signedRoute('web.login.pass', ['user' => $user->email]));
+        return redirect()->to(URL::temporarySignedRoute('web.login.pass', now()->addMinutes(15), ['user' => $user->email]));
     }
 
     /** Retorna o formulario de login
      * @return \Illuminate\View\View
+     * @throws ValidationException
      */
     public function pass(Request $request, $user)
     {
@@ -94,8 +97,12 @@ class AuthController extends Controller
         return view(config('login.view_login'), ['user' => $usuario]);
     }
 
-    /** Realiza o login
-     * @return \Illuminate\View\View
+    /**
+     * Realiza o login
+     * @param Request $request
+     * @param $user
+     * @return RedirectResponse
+     * @throws ValidationException
      */
     public function login(Request $request, $user)
     {
@@ -114,7 +121,7 @@ class AuthController extends Controller
         if (config('login.use_empresa')) {
             if (auth()->payload() && auth()->payload()['empresaId'])
                 return redirect()->route(config('login.pos_login_route'));
-            return redirect()->to(URL::signedRoute('web.login.empresaForm', ['user' => $user]));
+            return redirect()->to(URL::temporarySignedRoute('web.login.empresaForm', now()->addMinutes(15), ['user' => $user]));
         }
 
         return redirect()->route(config('login.pos_login_route'));
@@ -123,10 +130,14 @@ class AuthController extends Controller
     /**
      * Registra um novo usuário
      * @param Request $request
-     *
+     * @return RedirectResponse
+     * @throws ValidationException
      */
     public function store(Request $request)
     {
+        if (!$request->hasValidSignature())
+            return redirect()->route('web.login.index')->withErrors('Houve uma falha na assinatura. Tente novamente');
+
         $rule = [
             'nome' => 'required|string',
             'cpf' => 'required|cpf|formato_cpf',
@@ -141,7 +152,9 @@ class AuthController extends Controller
     }
 
     /** Mostra formulario de selecao de empresa
-     * @return \Illuminate\View\View
+     * @param Request $request
+     * @param $user
+     * @return RedirectResponse|View
      */
     public function selecionaEmpresa(Request $request, $user)
     {
@@ -149,8 +162,8 @@ class AuthController extends Controller
             return redirect()->route('web.login.index')->withErrors('Você deve se logar para acessar a página');
 
         if (!$request->hasValidSignature()) {
-            auth()->logout();
-            return redirect()->route('web.login.index')->withErrors('Houve uma falha na assinatura. Tente novamente');
+            (new UsuarioService())->logout();
+            return redirect()->to(URL::temporarySignedRoute('web.login.pass', now()->addMinutes(15), ['user' => $user]))->withErrors('Houve uma falha na assinatura. Tente novamente');
         }
 
         if (auth()->user()->email != $user) {
@@ -163,7 +176,8 @@ class AuthController extends Controller
     }
 
     /** Seleciona a empresa
-     * @return \Illuminate\View\View
+     * @return RedirectResponse
+     * @throws ValidationException
      */
     public function empresa(Request $request, $user)
     {
@@ -172,7 +186,7 @@ class AuthController extends Controller
 
         if (!$request->hasValidSignature()) {
             (new UsuarioService())->logout();
-            return redirect()->route('web.login.index')->withErrors('Houve uma falha na assinatura. Tente novamente');
+            return redirect()->to(URL::temporarySignedRoute('web.login.pass', now()->addMinutes(15), ['user' => $user]))->withErrors('Houve uma falha na assinatura. Tente novamente');
         }
 
         if (auth()->user()->email != $user) {
@@ -193,7 +207,7 @@ class AuthController extends Controller
 
     /** Envia e-mail de recuperação de senha
      * @param Request $request
-     * @return \Illuminate\Http\RedirectResponse
+     * @return RedirectResponse
      */
     public function recover(Request $request, $user)
     {
@@ -207,7 +221,7 @@ class AuthController extends Controller
 
     /** Desloga usuário
      * @param Request $request
-     * @return \Illuminate\Http\RedirectResponse
+     * @return RedirectResponse
      */
     public function logout(Request $request)
     {
@@ -217,7 +231,7 @@ class AuthController extends Controller
 
     /** Desloga usuário de todos os dispositivos e aplicativos
      * @param Request $request
-     * @return \Illuminate\Http\RedirectResponse
+     * @return RedirectResponse
      */
     public function logoutAll(Request $request)
     {
@@ -228,7 +242,7 @@ class AuthController extends Controller
     /** Remove usuario do cookie
      * @param Request $request
      * @param string $email
-     * @return \Illuminate\Http\RedirectResponse
+     * @return RedirectResponse
      */
     public function forget(Request $request, $email)
     {
