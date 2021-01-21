@@ -420,19 +420,20 @@ class UsuarioService
 
         $pos = count($data);
         foreach ($data as $i => $conta) {
-            if ($conta->mail == $email)
-                if (config('login.use_empresa') && ($conta->e == $empresa->id)) {
+            if ($conta->email == $email)
+                if (config('login.use_empresa') && ($conta->empresaId == $empresa->id)) {
                     $pos = $i;
                     break;
                 }
         }
         $data[$pos] = new stdClass;
-        $data[$pos]->mail = $email;
-        $data[$pos]->e = config('login.use_empresa') ? $empresa->id : 0;
-        $data[$pos]->en = config('login.use_empresa') ? $empresa->nome : '';
-        $data[$pos]->t = auth()->getToken()->get();
-        $data[$pos]->exp = auth()->payload()->get('exp');
-        $data[$pos]->i = $pos;
+        $data[$pos]->id = auth()->user()->getKey();
+        $data[$pos]->nome = auth()->user()->nome;
+        $data[$pos]->email = $email;
+        $data[$pos]->empresaId = $empresa->id ?? 0;
+        $data[$pos]->empresa = $empresa->nome ?? '';
+        $data[$pos]->token = auth()->getToken()->get();
+        $data[$pos]->contaId = $pos;
         request()->session()->put(config('login.session_data'), json_encode($data));
         return $pos;
     }
@@ -470,11 +471,11 @@ class UsuarioService
         $data = $this->getContas();
         $newData = array();
         foreach ($data as $conta) {
-            if ($conta->mail != $email)
+            if ($conta->email != $email)
                 continue;
             if ($empresaId === false)
                 continue;
-            if ($conta->e != $empresaId)
+            if ($conta->empresaId != $empresaId)
                 continue;
             $newData[] = $conta;
         }
@@ -507,7 +508,7 @@ class UsuarioService
      */
     public function getAccountsForLogin()
     {
-        $data = @json_decode(request()->cookie(config('login.accounts_cookie')));
+        $data = json_decode(request()->cookie(config('login.accounts_cookie')));
         if (!is_array($data))
             return [];
         return $data;
@@ -522,9 +523,38 @@ class UsuarioService
         $data = json_decode(request()->session()->get(config('login.session_data')));
         if (!is_array($data))
             return [];
+        $data = $this->validaContasSessao($data);
         foreach ($data as $i => $conta)
             $data[$i]->conectado = $this->validaContaConectada($conta);
         return $data;
+    }
+
+    /**
+     * Valida se dados da conta da sessao estao corretos
+     * @param array $data Array de contas retornadas da sessao
+     * @return array
+     */
+    private function validaContasSessao($data)
+    {
+        $res = array();
+        foreach ($data as $i => $conta) {
+            if (!isset($conta->id))
+                continue;
+            if (!isset($conta->nome))
+                continue;
+            if (!isset($conta->email))
+                continue;
+            if (!isset($conta->empresaId))
+                continue;
+            if (!isset($conta->empresa))
+                continue;
+            if (!isset($conta->token))
+                continue;
+            if (!isset($conta->contaId))
+                continue;
+            $res[] = $conta;
+        }
+        return $res;
     }
 
     /**
@@ -540,7 +570,7 @@ class UsuarioService
         $payload = auth()->payload();
         $empresa = $payload['empresaId'] ?? 0;
         foreach ($data as $conta) {
-            if (($conta->mail == $email) && ($conta->e == $empresa))
+            if (($conta->email == $email) && ($conta->empresaId == $empresa))
                 return $conta;
         }
         return null;

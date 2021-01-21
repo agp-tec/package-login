@@ -15,7 +15,8 @@
         "tymon/jwt-auth": "^1.0",
         "geekcom/validator-docs": "^3.4",
         "agp/base-utils": "^1.0",
-        "agp/log": "^1.0"
+        "agp/log": "^1.0",
+        "ext-json": "*"
     },
     "minimum-stability": "dev",
     "autoload": {
