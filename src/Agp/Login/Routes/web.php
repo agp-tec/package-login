@@ -10,7 +10,7 @@ Route::group(['as' => 'web.', 'middleware' => 'web', 'namespace' => 'Agp\Login\C
     Route::get('/registrar', 'AuthController@create')->name('login.create'); //Form para registrar
     Route::post('/registrar', 'AuthController@store')->name('login.store'); //Salva usuario
     Route::get('/logout', 'AuthController@logout')->name('login.logout'); //Deslogar
-    Route::get('/logout-all', 'AuthController@logoutAll')->name('logout.all'); //Deslogar de todos os dispositivos
+    Route::get('/logout-all/{user?}', 'AuthController@logoutAll')->name('logout.all'); //Deslogar de todos os dispositivos
     Route::get('/forget/{email}', 'AuthController@forget')->name('login.forget'); //Esquecer cookie
     Route::get('/login/{user}/recover', 'AuthController@recover')->name('login.recover'); //Recupera senha
 });

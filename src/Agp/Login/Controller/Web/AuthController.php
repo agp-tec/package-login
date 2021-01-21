@@ -246,11 +246,17 @@ class AuthController extends Controller
 
     /** Desloga usuário de todos os dispositivos e aplicativos
      * @param Request $request
+     * @param int $user ID do usuario a ser deslogado, caso não esteja autenticado
      * @return RedirectResponse
      */
-    public function logoutAll(Request $request)
+    public function logoutAll(Request $request, $user)
     {
-        (new UsuarioService())->logoutAll();
+        if (auth()->check() || $user) {
+            if (!auth()->check())
+                if (!$request->hasValidSignature())
+                    return redirect()->route('web.login.index');
+            (new UsuarioService())->logoutAll($user);
+        }
         return redirect()->route('web.login.index');
     }
 

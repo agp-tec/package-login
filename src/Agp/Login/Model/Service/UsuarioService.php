@@ -323,11 +323,12 @@ class UsuarioService
 
     /**
      * Realiza logout desabilitando token de todos os dispositivos
+     * @param int $userId ID do usuario a ser deslogado
      */
-    public function logoutAll()
+    public function logoutAll($userId)
     {
         DB::connection('mysql-session')
-            ->delete('DELETE FROM log_sessao WHERE user_id = ' . auth()->user()->getKey());
+            ->delete('DELETE FROM log_sessao WHERE user_id = ' . auth()->check() ? auth()->user()->getKey() : $userId);
         $email = auth()->user()->email;
         auth()->logout();
         $this->removeAccountSessao($email, false);
