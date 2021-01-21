@@ -122,7 +122,7 @@ class AuthController extends Controller
         (new UsuarioService)->login($usuario, $request->get('password'));
         if (config('login.use_empresa')) {
             $payload = auth()->payload();
-            if ($payload && array_key_exists('empresaId', $payload) && is_numeric($payload['empresaId']))
+            if ($payload && $payload['empresaId'])
                 return redirect()->route(config('login.pos_login_route'));
             return redirect()->to(URL::temporarySignedRoute('web.login.empresaForm', now()->addMinutes(15), ['user' => $user]));
         }
@@ -146,6 +146,10 @@ class AuthController extends Controller
             'cpf' => 'required|cpf|formato_cpf',
             'e-mail' => 'required|email',
             'usuario.senha' => 'required|string',
+            'empresa' => 'nullable',
+            'empresa.id' => 'nullable|integer',
+            'empresa.nome' => 'nullable|string',
+            'empresa.cpf_cnpj' => 'nullable|cpf_cnpj|formato_cpf_cnpj',
         ];
         Validator::make($request->all(), $rule)->validate();
 

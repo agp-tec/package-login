@@ -257,10 +257,10 @@ class UsuarioService
 
     /**
      * Realiza registro de novo usuario via API
-     * @param array $data Dados do formulario
+     * @param array $dados Dados do formulario
      * @throws ValidationException
      */
-    public function registrarApi($data)
+    public function registrarApi($dados)
     {
         $url = config('login.api');
         if ($url == '')
@@ -268,13 +268,13 @@ class UsuarioService
         $url = $url . '/registrar';
         $data = [
             'app' => config('login.id_app'),
-            'nome' => $data['nome'],
-            'email' => $data['e-mail'],
+            'nome' => $dados['nome'],
+            'email' => $dados['e-mail'],
             'tipo_doc' => '1',
-            'doc' => $data['cpf'],
+            'doc' => $dados['cpf'],
             'usuario' => [
-                'email' => $data['e-mail'],
-                'senha' => $data['usuario']['senha'],
+                'email' => $dados['e-mail'],
+                'senha' => $dados['usuario']['senha'],
             ],
             'client' => [
                 'user_agent' => Utils::getUserAgent(),
@@ -282,10 +282,14 @@ class UsuarioService
             ]
         ];
         if (config('login.use_empresa')) {
-            $data['empresa'] = [
-                'nome' => $data['nome'],
-                'cpf_cnpj' => $data['doc'],
-            ];
+            if (array_key_exists('empresa', $dados)) {
+                $data['empresa'] = $dados['empresa'];
+            } else {
+                $data['empresa'] = [
+                    'nome' => $data['nome'],
+                    'cpf_cnpj' => $data['doc'],
+                ];
+            }
         }
         $headers = [
             'Content-type' => 'application/json',

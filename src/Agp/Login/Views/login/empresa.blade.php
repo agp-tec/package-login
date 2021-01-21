@@ -6,7 +6,7 @@
                 {{$empresa->nome}}
                 <span class="d-flex">
                     <form method="post"
-                          action="{{ \Illuminate\Support\Facades\URL::temporarySignedRoute('web.login.empresa', now()->addMinutes(15), ['user' => auth()->user()->email])}}">
+                          action="{{ \Illuminate\Support\Facades\URL::temporarySignedRoute('web.login.empresa', now()->addMinutes(15), ['user' => auth()->user()->getKey()])}}">
                         @csrf
                         @method('POST')
                         <input type="hidden" name="empresa" value="{{ $empresa->id }}">
