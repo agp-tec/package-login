@@ -62,28 +62,27 @@ class UsuarioService
                 if ($user) {
                     if ($acao == 'registro')
                         $this->callbackLogin($user, 'registro');
-                    $usuarioEntity = config('login.user_entity');
-                    $usuario = $usuarioEntity::query()->where(['id' => $user])->get()->first();
+                    $usuario = (new UsuarioRepository())->getById($user);
                     if (!$usuario) {
-                        LogJob::dispatch(new Log(4, 'O usuário id ' . $user . ' do token não foi encontrado.'));
+                        LogJob::dispatch(new Log(6, 'O usuário id ' . $user . ' do token não foi encontrado.'));
                         throw ValidationException::withMessages(['message' => 'O usuário não possui permissão de acesso neste sistema.']);
                     }
                 }
                 if (!auth()->check()) {
-                    LogJob::dispatch(new Log(4, 'O servidor retornou um token válido mas sistema não pôde autenticar.'));
+                    LogJob::dispatch(new Log(6, 'O servidor retornou um token válido mas sistema não pôde autenticar.'));
                     throw ValidationException::withMessages(['message' => 'Ops. O servidor de autenticação está com probleminhas.']);
                 }
                 $this->callbackLogin($user, 'login');
                 request()->session()->put('token', auth()->getToken()->get());
                 if (config('login.use_empresa')) {
                     if (!is_array($data->auth->empresa) || (count($data->auth->empresa) <= 0)) {
-                        LogJob::dispatch(new Log(4, 'O servidor não retornou uma listagem de empresas para login.'));
+                        LogJob::dispatch(new Log(6, 'O servidor não retornou uma listagem de empresas para login.'));
                         throw ValidationException::withMessages(['message' => 'Ops. O servidor de autenticação está com probleminhas.']);
                     }
                     request()->session()->put('empresas', $data->auth->empresa);
                     if (count($data->auth->empresa) == 1) {
                         if (!is_numeric($payload['empresaId'])) {
-                            LogJob::dispatch(new Log(4, 'O servidor não retornou o ID da empresa no token.'));
+                            LogJob::dispatch(new Log(6, 'O servidor não retornou o ID da empresa no token.'));
                             throw ValidationException::withMessages(['message' => 'Ops. O servidor de autenticação está com probleminhas.']);
                         }
                         $this->callbackLogin($user, 'login_empresa');
@@ -94,7 +93,7 @@ class UsuarioService
                 throw ValidationException::withMessages(['message' => 'Ops. O servidor de autenticação está com probleminhas.']);
             }
         } else {
-            LogJob::dispatch(new Log(4, 'O servidor retornou 200/201 mas dados em body são desconhecidos.'));
+            LogJob::dispatch(new Log(6, 'O servidor retornou 200/201 mas dados em body são desconhecidos.'));
             throw ValidationException::withMessages(['message' => 'Ops. O servidor de autenticação está com probleminhas.']);
         }
     }
@@ -169,25 +168,16 @@ class UsuarioService
     }
 
     /** Realiza login
-     * @param Model|object $user
+     * @param Model|object $usuario
      * @param string $senha
      * @throws ValidationException
      */
-    public function login($user, $senha)
+    public function login($usuario, $senha)
     {
-        $isCpf = is_numeric($user);
-        if ($isCpf)
-            $usuario = (new UsuarioService)->encontraUsuarioByCpf($user);
-        else
-            $usuario = (new UsuarioService)->encontraUsuarioByEmail($user);
-
-        if (!$usuario)
-            throw ValidationException::withMessages(['message' => 'Usuário "' . $user . '" não encontrado.']);
-
         if (config('login.base') == 'api') {
             $this->loginApi($usuario, $senha);
-        }
-        throw new Exception('Método login não implementado para login_base=entity');
+        } else
+            throw new Exception('Método login não implementado para login_base=entity');
         //TODO Fazer login via Model
 
     }
@@ -201,17 +191,17 @@ class UsuarioService
     {
         if (config('login.base') == 'api') {
             $this->loginEmpresaApi($empresa);
-        }
-        throw new Exception('Método loginEmpresa não implementado para login_base=entity');
+        } else
+            throw new Exception('Método loginEmpresa não implementado para login_base=entity');
         //TODO Fazer login via Model
     }
 
     /** Realiza requisicao de recuperacao de senha via API
-     * @param string $email
+     * @param Model|object $usuario
      * @return bool
      * @throws Exception
      */
-    public function recuperaSenhaApi($email)
+    public function recuperaSenhaApi($usuario)
     {
         $url = config('login.api');
         if ($url == '')
@@ -219,7 +209,7 @@ class UsuarioService
         $url = $url . '/password/recover';
         $data = [
             'app' => config('login.id_app'),
-            'email' => $email,
+            'email' => $usuario->email,
             'client' => [
                 'user_agent' => Utils::getUserAgent(),
                 'ip' => Utils::getIpRequest(),
@@ -238,15 +228,16 @@ class UsuarioService
     }
 
     /** Realiza requisicao de recuperacao de senha
-     * @param string $email
+     * @param Model|object $usuario
      * @return bool
      * @throws Exception
      */
-    public function recuperaSenha($email)
+    public function recuperaSenha($usuario)
     {
         if (config('login.base') == 'api')
-            return $this->recuperaSenhaApi($email);
-        throw new Exception('Método recuperaSenha não implementado para login_base=entity');
+            return $this->recuperaSenhaApi($usuario);
+        else
+            throw new Exception('Método recuperaSenha não implementado para login_base=entity');
         //TODO Fazer login via Model
     }
 
@@ -259,8 +250,8 @@ class UsuarioService
     {
         if (config('login.base') == 'api') {
             $this->registrarApi($data);
-        }
-        throw new Exception('Método registrar não implementado para login_base=entity');
+        } else
+            throw new Exception('Método registrar não implementado para login_base=entity');
         //TODO Fazer login via Model
     }
 
@@ -458,6 +449,7 @@ class UsuarioService
             }
         }
         $data[$pos] = new stdClass;
+        $data[$pos]->id = auth()->user()->getKey();
         $data[$pos]->email = auth()->user()->email;
         $data[$pos]->nome = auth()->user()->nome . ' ' . auth()->user()->sobrenome;
         Cookie::queue(Cookie::make(config('login.accounts_cookie'), json_encode($data), 0));

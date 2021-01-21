@@ -11,21 +11,42 @@ namespace Agp\Login\Model\Repository;
 
 
 use App\Model\Entity\Usuario;
+use Exception;
 use Illuminate\Database\Eloquent\Model;
 
 
 class UsuarioRepository
 {
+    /** Retorna a entidade Usuario identificada por ID
+     * @param int $id
+     * @return Model|null
+     * @throws Exception
+     */
+    public function getById($id)
+    {
+        $usuarioEntity = config('login.user_entity');
+        if (!class_exists($usuarioEntity))
+            throw new Exception('Classe "' . $usuarioEntity . '" não existe. Informe a entidade do usuário corretamente.');
+
+        return $usuarioEntity::query()
+            ->where([
+                'adm_pessoa_id' => $id,
+            ])
+            ->limit(1)
+            ->get()
+            ->first();
+    }
+
     /** Retorna a entidade Usuario identificada por $cpf
      * @param string $cpf
-     * @return Usuario|Model|null
-     * @throws \Exception
+     * @return Model|null
+     * @throws Exception
      */
     public function encontraUsuarioByCPF($cpf)
     {
         $usuarioEntity = config('login.user_entity');
         if (!class_exists($usuarioEntity))
-            throw new \Exception('Classe "' . $usuarioEntity . '" não existe. Informe a entidade do usuário corretamente.');
+            throw new Exception('Classe "' . $usuarioEntity . '" não existe. Informe a entidade do usuário corretamente.');
 
         return $usuarioEntity::query()
             ->where([
@@ -38,14 +59,14 @@ class UsuarioRepository
 
     /** Retorna a entidade Usuario identificada por $email
      * @param string $email
-     * @return Usuario|Model|null
-     * @throws \Exception
+     * @return Model|null
+     * @throws Exception
      */
     public function encontraUsuarioByEmail($email)
     {
         $usuarioEntity = config('login.user_entity');
         if (!class_exists($usuarioEntity))
-            throw new \Exception('Classe "' . $usuarioEntity . '" não existe. Informe a entidade do usuário corretamente.');
+            throw new Exception('Classe "' . $usuarioEntity . '" não existe. Informe a entidade do usuário corretamente.');
 
         return $usuarioEntity::query()
             ->where([

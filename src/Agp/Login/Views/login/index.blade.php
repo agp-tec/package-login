@@ -19,7 +19,7 @@
                                 {{ Metronic::getSVG('media/svg/icons/Home/Trash.svg', 'svg-icon-danger') }}
                             </a>
                             <a class="btn btn-icon btn-light btn-sm ml-1" href="javascript:;"
-                               onclick="$('#login').val('{{$conta->email}}');$('#form-login').submit();">
+                               onclick="$('#id').val('{{$conta->id ?? ''}}');$('#form-login').submit();">
                                 {{ Metronic::getSVG('media/svg/icons/Navigation/Right-2.svg', 'svg-icon-success') }}
                             </a>
                         </div>
@@ -29,7 +29,8 @@
         </div>
     @endif
     @include('Login::flash-message')
-    <input type="hidden" id="empresa" name="empresa" value="">
+    <input type="hidden" id="id" name="id" value="">
+    <input type="hidden" name="empresa" value="">
     <div class="form-group">
         <input class="form-control form-control-solid h-auto py-5 px-6 cpfdebug" autofocus
                placeholder="{{ $accept }}" id="login" name="login"/>
