@@ -426,6 +426,7 @@ class UsuarioService
                     break;
                 }
         }
+        //TODO Transformar em classe serializavel
         $data[$pos] = new stdClass;
         $data[$pos]->id = auth()->user()->getKey();
         $data[$pos]->nome = auth()->user()->nome;
@@ -585,7 +586,7 @@ class UsuarioService
     public function validaContaConectada($conta)
     {
         try {
-            JWTAuth::setToken($conta->t)->payload();
+            JWTAuth::setToken($conta->token ?? '')->payload();
             return true;
         } catch (\Tymon\JWTAuth\Exceptions\JWTException $e) { //general JWT exception
             return false;
