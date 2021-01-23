@@ -231,6 +231,49 @@ class AuthController extends Controller
         return redirect()->route('web.login.index')->with('error', 'Não foi possível concluir a solicitação. Tente novamente.');
     }
 
+    /**
+     * Abre formulario para insercao da senha
+     *
+     * @param string $token
+     * @param string $email
+     * @return View
+     * @throws \Exception
+     */
+    public function reset($token, $email)
+    {
+        $usuario = (new UsuarioRepository)->encontraUsuarioByEmail($email);
+        return view(config('login.view_recuperar_senha'), compact('usuario', 'token'));
+    }
+
+    /**
+     * Atualiza senha do usuario
+     *
+     * @param string $token
+     * @param string $email
+     * @return RedirectResponse
+     * @throws \Exception
+     */
+    public function update($token, $email)
+    {
+        $rule = [
+            'senha' => 'required|confirmed|min:1',
+        ];
+        Validator::make(\request()->all(), $rule)->validate();
+        $usuario = (new UsuarioRepository)->encontraUsuarioByEmail($email);
+        if (!$usuario)
+            throw ValidationException::withMessages(['message' => 'Usuário não encontrado.']);
+
+        (new UsuarioService)->updatePassword($usuario, $token);
+
+        if (config('login.use_empresa')) {
+            $payload = auth()->payload();
+            if ($payload && $payload['empresaId'])
+                return redirect()->route(config('login.pos_login_route'));
+            return redirect()->to(URL::temporarySignedRoute('web.login.empresaForm', now()->addMinutes(15), ['user' => $usuario->getKey()]));
+        }
+        return redirect()->route(config('login.pos_login_route'));
+    }
+
     /** Desloga usuário
      * @param Request $request
      * @return RedirectResponse

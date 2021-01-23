@@ -242,6 +242,60 @@ class UsuarioService
     }
 
     /**
+     * Realiza requisicao de atualizacao de senha via API
+     *
+     * @param Model|object $usuario
+     * @return bool
+     * @throws Exception
+     */
+    public function updatePasswordApi($usuario, $token)
+    {
+        $url = config('login.api');
+        if ($url == '')
+            throw new Exception('Parametro "login.api" não informado.');
+        $url = $url . 'password/reset/' . $token . '/' . $usuario->email . '';
+        $data = [
+            'app' => config('login.id_app'),
+            'senha' => base64_encode(request()->get('senha')),
+            'client' => [
+                'user_agent' => Utils::getUserAgent(),
+                'ip' => Utils::getIpRequest(),
+            ]
+        ];
+        $headers = [
+            'Content-type' => 'application/json',
+            'Accept' => 'application/json',
+        ];
+        $res = Http::withHeaders($headers)->post($url, $data);
+        if (($res->status() == 200) || ($res->status() == 201)) {
+            $this->validaTokenApi($res->object(), 'login');
+            return true;
+        } else {
+            $data = $res->json();
+            if ($data && array_key_exists('errors', $data))
+                throw ValidationException::withMessages($data['errors']);
+            throw ValidationException::withMessages(['message' => $data['message']]);
+        }
+    }
+
+    /**
+     * Atualiza senha do usuário
+     *
+     * @param Model|object $usuario
+     * @param string $token
+     * @return bool
+     * @throws Exception
+     */
+    public function updatePassword($usuario, $token)
+    {
+        if (config('login.base') == 'api')
+            return $this->updatePasswordApi($usuario, $token);
+        else
+            throw new Exception('Método updatePassowrd não implementado para login_base=entity');
+        //TODO Fazer login via Model
+    }
+
+    /**
      * Realiza registro de novo usuario
      * @param array $data Dados do formulario
      * @throws ValidationException

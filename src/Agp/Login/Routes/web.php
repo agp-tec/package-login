@@ -13,6 +13,8 @@ Route::group(['as' => 'web.', 'middleware' => 'web', 'namespace' => 'Agp\Login\C
     Route::get('/logout-all', 'AuthController@logoutAll')->name('logout.all'); //Deslogar de todos os dispositivos
     Route::get('/forget/{email}', 'AuthController@forget')->name('login.forget'); //Esquecer cookie
     Route::get('/login/{user}/recover', 'AuthController@recover')->name('login.recover'); //Recupera senha
+    Route::get('/password/reset/{token}/{email}', 'AuthController@reset')->name('login.reset'); //Formulario de troca de senha
+    Route::put('/password/reset/{token}/{email}', 'AuthController@update')->name('login.update'); //Atualiza senha
 });
 
 ?>

@@ -22,4 +22,5 @@ return [
     'view_login' => env('LOGIN_VIEW_LOGIN', 'Login::view.login.pass'),
     'view_empresa' => env('LOGIN_VIEW_EMPRESA', 'Login::view.login.empresa'),
     'view_registrar' => env('LOGIN_VIEW_REGISTRAR', 'Login::view.login.create'),
+    'view_recuperar_senha' => env('LOGIN_VIEW_RECUPERAR_SENHA', 'Login::view.login.recover'),
 ];
