@@ -328,10 +328,14 @@ class UsuarioService
     public function logoutAll($userId)
     {
         DB::connection('mysql-session')
-            ->delete('DELETE FROM log_sessao WHERE user_id = ' . auth()->check() ? auth()->user()->getKey() : $userId);
-        $email = auth()->user()->email;
-        auth()->logout();
-        $this->removeAccountSessao($email, false);
+            ->delete('DELETE FROM log_sessao WHERE user_id = ' . (auth()->check() ? auth()->user()->getKey() : $userId));
+        if (auth()->check()) {
+            $email = auth()->user()->email;
+            auth()->logout();
+            $this->removeAccountSessao($email, false);
+        } else {
+            $this->removeAccountSessao($userId, false);
+        }
     }
 
     /**
@@ -463,16 +467,16 @@ class UsuarioService
     }
 
     /** Atualiza todas as contas
-     * @param string $email
+     * @param int $userId
      * @param int|false $empresaId Id da empresa, 0 ou false para remover todos as contas do dado e-mail
      * @return array
      */
-    public function removeAccountSessao($email, $empresaId = 0)
+    public function removeAccountSessao($userId, $empresaId = 0)
     {
         $data = $this->getContas();
         $newData = array();
         foreach ($data as $conta) {
-            if ($conta->email != $email)
+            if ($conta->id != $userId)
                 continue;
             if ($empresaId === false)
                 continue;

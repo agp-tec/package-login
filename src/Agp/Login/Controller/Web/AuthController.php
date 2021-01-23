@@ -138,9 +138,6 @@ class AuthController extends Controller
      */
     public function store(Request $request)
     {
-        if (!$request->hasValidSignature())
-            return redirect()->route('web.login.index')->withErrors('Houve uma falha na assinatura. Tente novamente');
-
         $rule = [
             'nome' => 'required|string',
             'cpf' => 'required|cpf|formato_cpf',
@@ -246,16 +243,15 @@ class AuthController extends Controller
 
     /** Desloga usuário de todos os dispositivos e aplicativos
      * @param Request $request
-     * @param int $user ID do usuario a ser deslogado, caso não esteja autenticado
      * @return RedirectResponse
      */
-    public function logoutAll(Request $request, $user)
+    public function logoutAll(Request $request)
     {
-        if (auth()->check() || $user) {
+        if (auth()->check() || $request->get('user')) {
             if (!auth()->check())
                 if (!$request->hasValidSignature())
                     return redirect()->route('web.login.index');
-            (new UsuarioService())->logoutAll($user);
+            (new UsuarioService())->logoutAll($request->get('user'));
         }
         return redirect()->route('web.login.index');
     }
