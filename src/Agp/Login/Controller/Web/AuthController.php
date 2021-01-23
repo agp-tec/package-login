@@ -241,8 +241,8 @@ class AuthController extends Controller
      */
     public function reset($token, $email)
     {
-        $usuario = (new UsuarioRepository)->encontraUsuarioByEmail($email);
-        return view(config('login.view_recuperar_senha'), compact('usuario', 'token'));
+        $user = (new UsuarioRepository)->encontraUsuarioByEmail($email);
+        return view(config('login.view_recuperar_senha'), compact('user', 'token'));
     }
 
     /**

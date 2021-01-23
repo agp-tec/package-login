@@ -1,6 +1,6 @@
 <div class="login-form login-signin">
-    @if ($usuario && $token)
-        <form method="post" action="{{ route('web.login.reset', ['token' => $token, 'email' => $usuario->email]) }}">
+    @if ($user && $token)
+        <form method="post" action="{{ route('web.login.reset', ['token' => $token, 'email' => $user->email]) }}">
             @csrf
             @method('PUT')
             @include('Login::flash-message')

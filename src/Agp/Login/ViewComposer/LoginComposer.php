@@ -52,12 +52,12 @@ class LoginComposer
     }
 
     /** Retorna o formulario de insercao de senha
-     * @param Model|object $usuario
+     * @param Model|object $user
      * @param string $token
      * @return Application|Factory|View
      */
-    public static function recover($usuario, $token)
+    public static function recover($user, $token)
     {
-        return view('Login::login.recover', compact('usuario', 'token'));
+        return view('Login::login.recover', compact('user', 'token'));
     }
 }
