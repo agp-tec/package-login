@@ -210,6 +210,7 @@ class UsuarioService
         $data = [
             'app' => config('login.id_app'),
             'email' => $usuario->email,
+            'recover_route' => config('login.recover_route'),
             'client' => [
                 'user_agent' => Utils::getUserAgent(),
                 'ip' => Utils::getIpRequest(),

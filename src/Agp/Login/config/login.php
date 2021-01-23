@@ -12,6 +12,7 @@ return [
     'pos_login_route' => env('LOGIN_POS_LOGIN_ROUTE', 'pos-login'),
     'user_notfound_route' => env('LOGIN_USER_NOT_FOUND_ROUTE', 'web.login.index'),
     'forget_route' => env('LOGIN_FORGET_ROUTE', 'forget'),
+    'recover_route' => env('LOGIN_RECOVER_ROUTE', null), //Rota para formulario de recuperacao de senha. Se null, utiliza do adm
     'use_empresa' => true, //Indica se sistema espera um token com empresaId e envia chave empresa em registro
     'use_conta_id' => true, //Indica se sistema espera o parametro contaId nas rodas
     'login_accept' => [
