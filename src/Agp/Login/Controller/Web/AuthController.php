@@ -93,8 +93,11 @@ class AuthController extends Controller
             return redirect()->route('web.login.index')->withErrors('Houve uma falha na assinatura. Tente novamente');
 
         $usuario = (new UsuarioRepository())->getById($user);
-        if (!$usuario)
-            throw ValidationException::withMessages(['message' => 'Usuário não encontrado.']);
+        if (!$usuario) {
+            if ($user > 0)
+                return redirect()->route('web.login.index')->withErrors('Houve uma falha na assinatura. Tente novamente');
+            return redirect()->route('web.login.index');
+        }
         return view(config('login.view_login'), ['user' => $usuario]);
     }
 
