@@ -95,7 +95,7 @@ class AuthController extends Controller
         $usuario = (new UsuarioRepository())->getById($user);
         if (!$usuario) {
             if ($user > 0)
-                return redirect()->route('web.login.index')->withErrors('Houve uma falha na assinatura. Tente novamente');
+                return redirect()->route('web.login.index')->withErrors('Usuário não encontrado');
             return redirect()->route('web.login.index');
         }
         return view(config('login.view_login'), ['user' => $usuario]);
