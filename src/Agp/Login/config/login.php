@@ -5,6 +5,7 @@ return [
     'find_base' => env('LOGIN_FIND_BASE', 'entity'), //"api" para pesquisa de usuarios via API, ou "entity" para pesquisa de usuarios via models (Banco de dados)
     'api' => env('LOGIN_API'),
     'id_app' => env('ID_APP'),
+    'device_cookie' => env('LOGIN_DEVICE_COOKIE', 'device'),
     'accounts_cookie' => env('LOGIN_ACCOUNTS_COOKIE', 'accounts'),
     'session_data' => env('LOGIN_SESSION_DATA', 'data'),
     'user_entity' => env('LOGIN_USER_ENTITY', 'App\Model\Entity\Usuario'),

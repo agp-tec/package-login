@@ -111,6 +111,7 @@ class UsuarioService
         $url = $url . '/login';
         $data = [
             'app' => config('login.id_app'),
+            'usuarioDispositivo' => $this->getUsuarioDispositivoCookie($usuario),
             'email' => $usuario->email,
             'password' => base64_encode($senha),
             'client' => [
@@ -131,6 +132,9 @@ class UsuarioService
                 throw ValidationException::withMessages($data['errors']);
             throw ValidationException::withMessages(['message' => $data['message']]);
         }
+        $data = $res->json();
+        if (array_key_exists('data',$data) && array_key_exists('usuarioDispositivo', $data['data']))
+            $this->salvaCookieDevice($data['data']['usuarioDispositivo']);
     }
 
     /** Realiza login na empresa via API
@@ -669,4 +673,54 @@ class UsuarioService
         $goto['contaId'] = $contaId;
         request()->session()->put('goto', json_encode($goto));
     }
+
+    /**
+     * @param object $usuario
+     * @return array
+     * @throws Exception
+     */
+    private function getUsuarioDispositivoCookie($usuario)
+    {
+        if (($usuario->id ?? null) != null) {
+            $adm_pessoa_id = $usuario->id;
+        } elseif (($usuario->email ?? null) != null) {
+            $usuario = $this->encontraUsuarioByEmail($usuario->email);
+            $adm_pessoa_id = $usuario->adm_pessoa_id;
+        } else
+            return [];
+
+        $data = @json_decode(request()->cookie(config('login.device_cookie')),true);
+        if (!is_array($data))
+            return null;
+        if (!isset($data[$adm_pessoa_id]))
+            return null;
+        $data = $data[$adm_pessoa_id];
+        if (!array_key_exists('id',$data))
+            return null;
+        if (!array_key_exists('adm_pessoa_id',$data))
+            return null;
+        if (!array_key_exists('adm_aplicativo_id',$data))
+            return null;
+        $data = (object)$data;
+        if ($data->adm_pessoa_id != $adm_pessoa_id)
+            return [];
+        return [
+            'id' => $data->id,
+        ];
+    }
+
+    /**
+     * Cria cookie com o ID do dispositivo e ID do usuario
+     *
+     * @param object $usuarioDispositivo
+     */
+    private function salvaCookieDevice($usuarioDispositivo)
+    {
+        $data = @json_decode(request()->cookie(config('login.device_cookie')));
+        if (!is_array($data))
+            $data = array();
+        $data[$usuarioDispositivo['adm_pessoa_id']] = $usuarioDispositivo;
+        Cookie::queue(Cookie::make(config('login.device_cookie'), json_encode($data), 0));
+    }
+
 }
