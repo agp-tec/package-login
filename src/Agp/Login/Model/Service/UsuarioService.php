@@ -683,6 +683,8 @@ class UsuarioService
     {
         if (($usuario->id ?? null) != null) {
             $adm_pessoa_id = $usuario->id;
+        } elseif (($usuario->adm_pessoa_id ?? null) != null) {
+            $adm_pessoa_id = $usuario->adm_pessoa_id;
         } elseif (($usuario->email ?? null) != null) {
             $usuario = $this->encontraUsuarioByEmail($usuario->email);
             $adm_pessoa_id = $usuario->adm_pessoa_id;
@@ -723,4 +725,29 @@ class UsuarioService
         Cookie::queue(Cookie::make(config('login.device_cookie'), json_encode($data), 0));
     }
 
+    /**
+     * Retorna os dados do dispositivoUsuario do usuário logado salvo no cookie
+     *
+     * @return array|null
+     */
+    public static function getDispositivoCookie()
+    {
+        if (!auth()->check())
+            return null;
+        $data = @json_decode(request()->cookie(config('login.device_cookie')), true);
+        if (!is_array($data))
+            return null;
+        if (!isset($data[auth()->user()->getKey()]))
+            return null;
+        $data = $data[auth()->user()->getKey()];
+        if (!array_key_exists('id', $data))
+            return null;
+        if (!array_key_exists('adm_pessoa_id', $data))
+            return null;
+        if (!array_key_exists('adm_aplicativo_id', $data))
+            return null;
+        if ($data['adm_pessoa_id'] != auth()->user()->getKey())
+            return null;
+        return $data;
+    }
 }
