@@ -730,23 +730,25 @@ class UsuarioService
      *
      * @return array|null
      */
-    public static function getDispositivoCookie()
+    public static function getDispositivoCookie($userId = null)
     {
-        if (!auth()->check())
+        if (!auth()->check() && !$userId)
             return null;
+        if (!$userId)
+            $userId = auth()->user()->getKey();
         $data = @json_decode(request()->cookie(config('login.device_cookie')), true);
         if (!is_array($data))
             return null;
-        if (!isset($data[auth()->user()->getKey()]))
+        if (!isset($data[$userId]))
             return null;
-        $data = $data[auth()->user()->getKey()];
+        $data = $data[$userId];
         if (!array_key_exists('id', $data))
             return null;
         if (!array_key_exists('adm_pessoa_id', $data))
             return null;
         if (!array_key_exists('adm_aplicativo_id', $data))
             return null;
-        if ($data['adm_pessoa_id'] != auth()->user()->getKey())
+        if ($data['adm_pessoa_id'] != $userId)
             return null;
         return $data;
     }
