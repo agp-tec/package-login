@@ -718,7 +718,7 @@ class UsuarioService
      */
     private function salvaCookieDevice($usuarioDispositivo)
     {
-        $data = @json_decode(request()->cookie(config('login.device_cookie')));
+        $data = @json_decode(request()->cookie(config('login.device_cookie')), true);
         if (!is_array($data))
             $data = array();
         $data[$usuarioDispositivo['adm_pessoa_id']] = $usuarioDispositivo;
