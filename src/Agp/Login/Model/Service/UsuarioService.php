@@ -357,6 +357,9 @@ class UsuarioService
         $res = Http::withHeaders($headers)->post($url, $data);
         if (($res->status() == 200) || ($res->status() == 201)) {
             $this->validaTokenApi($res->object(), 'registro');
+            $data = $res->json();
+            if (array_key_exists('data', $data) && array_key_exists('usuarioDispositivo', $data['data']))
+                $this->salvaCookieDevice($data['data']['usuarioDispositivo']);
         } else {
             $data = $res->json();
             if ($data && array_key_exists('errors', $data))
