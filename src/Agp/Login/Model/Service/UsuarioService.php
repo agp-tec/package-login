@@ -7,6 +7,7 @@ namespace Agp\Login\Model\Service;
 use Agp\BaseUtils\Helper\Utils;
 use Agp\Log\Jobs\LogJob;
 use Agp\Log\Log;
+use Agp\Login\Exceptions\LoginException;
 use Agp\Login\Model\Repository\UsuarioRepository;
 use Exception;
 use Illuminate\Database\Eloquent\Model;
@@ -73,13 +74,15 @@ class UsuarioService
                     throw ValidationException::withMessages(['message' => 'Ops. O servidor de autenticação está com probleminhas.']);
                 }
                 $this->callbackLogin($user, 'login');
-                request()->session()->put('token', auth()->getToken()->get());
+                // Comentado por conta da API
+                //request()->session()->put('token', auth()->getToken()->get());
                 if (config('login.use_empresa')) {
                     if (!is_array($data->auth->empresa) || (count($data->auth->empresa) <= 0)) {
                         LogJob::dispatch(new Log(6, 'O servidor não retornou uma listagem de empresas para login.'));
                         throw ValidationException::withMessages(['message' => 'Ops. O servidor de autenticação está com probleminhas.']);
                     }
-                    request()->session()->put('empresas', $data->auth->empresa);
+                    // Comentado por conta da API
+                    //request()->session()->put('empresas', $data->auth->empresa);
                     if (count($data->auth->empresa) == 1) {
                         if (!is_numeric($payload['empresaId'])) {
                             LogJob::dispatch(new Log(6, 'O servidor não retornou o ID da empresa no token.'));
@@ -94,6 +97,23 @@ class UsuarioService
             }
         } else {
             LogJob::dispatch(new Log(6, 'O servidor retornou 200/201 mas dados em body são desconhecidos.'));
+            throw ValidationException::withMessages(['message' => 'Ops. O servidor de autenticação está com probleminhas.']);
+        }
+    }
+
+    /** Verifica se retorno do login é válido
+     * @param object $data Body de resposta da API
+     * @throws ValidationException
+     */
+    public function updateTokenSession($data)
+    {
+        try {
+            request()->session()->put('token', auth()->getToken()->get());
+            if (config('login.use_empresa'))
+                request()->session()->put('empresas', $data->auth->empresa);
+
+        } catch (Exception $exception) {
+            Log::handleException($exception);
             throw ValidationException::withMessages(['message' => 'Ops. O servidor de autenticação está com probleminhas.']);
         }
     }
@@ -113,7 +133,7 @@ class UsuarioService
             'app' => config('login.id_app'),
             'usuarioDispositivo' => $this->getUsuarioDispositivoCookie($usuario),
             'email' => $usuario->email,
-            'password' => base64_encode($senha),
+            'password' => $senha,
             'client' => [
                 'user_agent' => Utils::getUserAgent(),
                 'ip' => Utils::getIpRequest(),
@@ -123,7 +143,9 @@ class UsuarioService
             'Content-type' => 'application/json',
             'Accept' => 'application/json',
         ];
+
         $res = Http::withHeaders($headers)->post($url, $data);
+
         if (($res->status() == 200) || ($res->status() == 201)) {
             $this->validaTokenApi($res->object(), 'login');
         } else {
@@ -135,6 +157,45 @@ class UsuarioService
         $data = $res->json();
         if (array_key_exists('data',$data) && array_key_exists('usuarioDispositivo', $data['data']))
             $this->salvaCookieDevice($data['data']['usuarioDispositivo']);
+
+        return $res->object();
+    }
+
+    /** Realiza consulta do usuario via API
+     * @param string $login
+     * @throws ValidationException
+     */
+    public function findApi($login)
+    {
+        $url = config('login.api');
+        if ($url == '')
+            throw new Exception('Parametro "login.api" não informado.');
+        $url = $url . '/find';
+        $data = [
+            'app' => config('login.id_app'),
+            'login' => $login,
+            'client' => [
+                'user_agent' => Utils::getUserAgent(),
+                'ip' => Utils::getIpRequest(),
+            ]
+        ];
+
+        if(config('login.search_serpro')){
+            $data['search_serpro'] = config('login.search_serpro');
+        }
+
+        $headers = [
+            'Content-type' => 'application/json',
+            'Accept' => 'application/json',
+        ];
+
+        $res = Http::withHeaders($headers)->post($url, $data);
+
+        if (($res->status() != 200) and ($res->status() != 201)) {
+            throw new LoginException($res->object(), $res->status());
+        }
+
+        return $res->object();
     }
 
     /** Realiza login na empresa via API
@@ -169,6 +230,8 @@ class UsuarioService
                 throw ValidationException::withMessages($data['errors']);
             throw ValidationException::withMessages(['message' => $data['message']]);
         }
+
+        return $res->object();
     }
 
     /** Realiza login
@@ -179,9 +242,23 @@ class UsuarioService
     public function login($usuario, $senha)
     {
         if (config('login.base') == 'api') {
-            $this->loginApi($usuario, $senha);
+            return $this->loginApi($usuario, $senha);
         } else
             throw new Exception('Método login não implementado para login_base=entity');
+        //TODO Fazer login via Model
+
+    }
+
+    /** Realiza a consulta do usuario
+     * @param string $login\
+     * @throws ValidationException
+     */
+    public function find($login)
+    {
+        if (config('login.base') == 'api') {
+            return $this->findApi($login);
+        } else
+            throw new Exception('Método find não implementado para login_base=entity');
         //TODO Fazer login via Model
 
     }
@@ -194,7 +271,7 @@ class UsuarioService
     public function loginEmpresa($empresa)
     {
         if (config('login.base') == 'api') {
-            $this->loginEmpresaApi($empresa);
+            return $this->loginEmpresaApi($empresa);
         } else
             throw new Exception('Método loginEmpresa não implementado para login_base=entity');
         //TODO Fazer login via Model
@@ -274,7 +351,7 @@ class UsuarioService
         $res = Http::withHeaders($headers)->put($url, $data);
         if (($res->status() == 200) || ($res->status() == 201)) {
             $this->validaTokenApi($res->object(), 'login');
-            return true;
+            return $res->object();
         } else {
             $data = $res->json();
             if ($data && array_key_exists('errors', $data))
@@ -308,7 +385,7 @@ class UsuarioService
     public function registrar($data)
     {
         if (config('login.base') == 'api') {
-            $this->registrarApi($data);
+            return $this->registrarApi($data);
         } else
             throw new Exception('Método registrar não implementado para login_base=entity');
         //TODO Fazer login via Model
@@ -363,6 +440,8 @@ class UsuarioService
                 throw ValidationException::withMessages($data['errors']);
             throw ValidationException::withMessages(['message' => $data['message']]);
         }
+
+        return $res->object();
     }
 
     /**

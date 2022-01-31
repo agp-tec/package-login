@@ -16,10 +16,12 @@ return [
     'recover_route' => env('LOGIN_RECOVER_ROUTE', null), //Rota para formulario de recuperacao de senha. Se null, utiliza do adm
     'use_empresa' => true, //Indica se sistema espera um token com empresaId e envia chave empresa em registro
     'use_conta_id' => true, //Indica se sistema espera o parametro contaId nas rodas
+    'search_serpro' => false, //Indica se sistema deve consultar a pessoa na base de dados da serpro;
     'login_accept' => [
         'cpf' => 'required|cpf|formato_cpf',
         'e-mail' => 'required|email',
     ],
+
     'view_index' => env('LOGIN_VIEW_INDEX', 'Login::view.login.index'),
     'view_login' => env('LOGIN_VIEW_LOGIN', 'Login::view.login.pass'),
     'view_empresa' => env('LOGIN_VIEW_EMPRESA', 'Login::view.login.empresa'),

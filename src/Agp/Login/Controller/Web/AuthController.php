@@ -122,7 +122,11 @@ class AuthController extends Controller
         ];
         Validator::make($request->all(), $rule)->validate();
 
-        (new UsuarioService)->login($usuario, $request->get('password'));
+        //TODO - EFETUAR TESTE
+        $usuarioService = new UsuarioService;
+        $res = $usuarioService->login($usuario, base64_encode($request->get('password')));
+        $usuarioService->updateTokenSession($res);
+
         if (config('login.use_empresa')) {
             $payload = auth()->payload();
             if ($payload && $payload['empresaId'])
@@ -153,7 +157,9 @@ class AuthController extends Controller
         ];
         Validator::make($request->all(), $rule)->validate();
 
-        (new UsuarioService())->registrar($request->all());
+        $usuarioService = new UsuarioService;
+        $res = $usuarioService->registrar($request->all());
+        $usuarioService->updateTokenSession($res);
 
         return redirect()->route(config('login.pos_login_route'));
     }
@@ -209,7 +215,9 @@ class AuthController extends Controller
         ];
         Validator::make($request->all(), $rule)->validate();
 
-        (new UsuarioService())->loginEmpresa($request->get('empresa'));
+        $usuarioService = new UsuarioService;
+        $res = $usuarioService->loginEmpresa($request->get('empresa'));
+        $usuarioService->updateTokenSession($res);
 
         return redirect()->route(config('login.pos_login_route'));
     }
@@ -266,7 +274,9 @@ class AuthController extends Controller
         if (!$usuario)
             throw ValidationException::withMessages(['message' => 'Usuário não encontrado.']);
 
-        (new UsuarioService)->updatePassword($usuario, $token);
+        $usuarioService = new UsuarioService;
+        $res = $usuarioService->updatePassword($usuario, $token);
+        $usuarioService->updateTokenSession($res);
 
         if (config('login.use_empresa')) {
             $payload = auth()->payload();

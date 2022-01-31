@@ -10,7 +10,7 @@
 namespace Agp\Login\Model\Repository;
 
 
-use App\Model\Entity\Usuario;
+use Agp\BaseUtils\Helper\Utils;
 use Exception;
 use Illuminate\Database\Eloquent\Model;
 
@@ -27,7 +27,7 @@ class UsuarioRepository
         $usuarioEntity = config('login.user_entity');
         if (!class_exists($usuarioEntity))
             throw new Exception('Classe "' . $usuarioEntity . '" não existe. Informe a entidade do usuário corretamente.');
-
+        
         return $usuarioEntity::query()
             ->where([
                 'adm_pessoa_id' => $id,
@@ -74,6 +74,26 @@ class UsuarioRepository
             ])
             ->limit(1)
             ->get()
+            ->first();
+    }
+
+    /** Retorna a entidade Usuario identificada por $email ou $cpf
+     * @param string $value
+     * @return Model|null
+     * @throws Exception
+     */
+    public function encontraUsuarioByEmailOrCpf($value)
+    {
+        $usuarioEntity = config('login.user_entity');
+        if (!class_exists($usuarioEntity))
+            throw new Exception('Classe "' . $usuarioEntity . '" não existe. Informe a entidade do usuário corretamente.');
+
+        return $usuarioEntity::query()
+            ->where(function ($query) use ($value) {
+                $query
+                    ->orWhere('doc', '=', encrypter(Utils::mask('###.###.###-##', $value), false))
+                    ->orWhere('email', '=', encrypter($value, false));
+            })
             ->first();
     }
 }
