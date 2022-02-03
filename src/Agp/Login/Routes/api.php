@@ -8,5 +8,7 @@ Route::group(['as' => 'api.', 'prefix' => 'api', 'middleware' => 'api', 'namespa
 
     Route::post('password/recover/{user}', 'AuthController@recover');
     Route::put('password/reset/{token}/{email}', 'AuthController@update');
+
+    Route::get('get-user', 'AuthController@user');
 });
 ?>

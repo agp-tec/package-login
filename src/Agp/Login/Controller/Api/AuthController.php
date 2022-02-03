@@ -3,17 +3,14 @@
 namespace Agp\Login\Controller\Api;
 
 
-use Agp\BaseUtils\Helper\Utils;
 use Agp\Login\Controller\Controller;
 use Agp\Login\Model\Repository\UsuarioRepository;
+use Agp\Login\Model\Resource\UsuarioResource;
 use Agp\Login\Model\Service\UsuarioService;
-use Agp\Login\Utils\LoginUtils;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
-use Illuminate\View\View;
 
 class AuthController extends Controller
 {
@@ -133,5 +130,10 @@ class AuthController extends Controller
     public function forget(Request $request, $email)
     {
         (new UsuarioService())->forget($email);
+    }
+
+    public function user()
+    {
+        return new UsuarioResource(auth()->user(), true);
     }
 }
