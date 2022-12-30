@@ -161,6 +161,50 @@ class UsuarioService
         return $res->object();
     }
 
+    /** Realiza login via API
+     * @param string $email
+     * @param string $doc
+     * @param string $senha
+     * @throws ValidationException
+     */
+    public function loginDirectApi($email, $doc, $senha)
+    {
+        $url = config('login.api');
+        if ($url == '')
+            throw new Exception('Parametro "login.api" não informado.');
+        $url = $url . '/login';
+        $data = [
+            'app' => config('login.id_app'),
+            'email' => $email,
+            'doc' => $doc,
+            'password' => $senha,
+            'client' => [
+                'user_agent' => Utils::getUserAgent(),
+                'ip' => Utils::getIpRequest(),
+            ]
+        ];
+        $headers = [
+            'Content-type' => 'application/json',
+            'Accept' => 'application/json',
+        ];
+
+        $res = Http::withHeaders($headers)->post($url, $data);
+
+        if (($res->status() == 200) || ($res->status() == 201)) {
+            $this->validaTokenApi($res->object(), 'login');
+        } else {
+            $data = $res->json();
+            if ($data && array_key_exists('errors', $data))
+                throw ValidationException::withMessages($data['errors']);
+            throw ValidationException::withMessages(['message' => $data['message']]);
+        }
+        $data = $res->json();
+        if (array_key_exists('data', $data) && array_key_exists('usuarioDispositivo', $data['data']))
+            $this->salvaCookieDevice($data['data']['usuarioDispositivo']);
+
+        return $res->json();
+    }
+
     /** Realiza consulta do usuario via API
      * @param string $login
      * @throws ValidationException

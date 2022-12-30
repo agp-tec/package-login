@@ -43,6 +43,32 @@ class AuthController extends Controller
     }
 
     /**
+     * Realiza o login com o doc e senha
+     * @param Request $request
+     * @return RedirectResponse
+     * @throws ValidationException
+     */
+    public function loginDirect(Request $request)
+    {
+        $rules = [
+            'app' => 'required|numeric',
+            'email' => 'nullable|email',
+            'doc' => 'nullable|cpf|formato_cpf',
+            'password' => 'required',
+        ];
+        $messages = [
+            'app.*' => 'O ID da aplicação não é válido',
+            'email.*' => 'O e-mail não é válido',
+            'doc.*' => 'O CPF não é válido',
+            'password.*' => 'A senha não é válida',
+        ];
+
+        Validator::make($request->all(), $rules, $messages)->validate();
+
+        return (new UsuarioService)->loginDirectApi($request->get('email'), $request->get('doc'), $request->get('password'));
+    }
+
+    /**
      * Registra um novo usuário
      * @param Request $request
      * @return RedirectResponse
